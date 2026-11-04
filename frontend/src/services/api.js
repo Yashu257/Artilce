@@ -7,7 +7,11 @@
 
 import { SAMPLE_ARTICLES, SAMPLE_CATEGORIES } from '../data/sampleArticles';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
+const API_BASE = (import.meta.env.VITE_API_BASE_URL && import.meta.env.VITE_API_BASE_URL !== '/api')
+  ? import.meta.env.VITE_API_BASE_URL
+  : (typeof window !== 'undefined' && window.location.hostname.includes('onrender.com')
+      ? 'https://cipla-article-backend.onrender.com'
+      : (import.meta.env.VITE_API_BASE_URL || '/api'));
 
 /**
  * Generic fetch wrapper with credentials for PHP sessions.
