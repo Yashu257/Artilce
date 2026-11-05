@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.env
+.env.local
+# NOTE: uploads/*.pdf are intentionally NOT ignored — the 9 source PDFs in
+# backend/uploads/ are seed data for the Document table.
+data/
+*.log

@@ -1,0 +1,19 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: light; }
+html, body { height: 100%; }
+body { @apply bg-background text-body font-sans antialiased; }
+h1, h2, h3, h4 { @apply text-heading; }
+a { @apply text-primary; }
+input, select, textarea { @apply text-heading; }
+.prose-chat h1, .prose-chat h2, .prose-chat h3 { @apply text-heading font-semibold mt-3 mb-1; }
+.prose-chat p { @apply my-2 leading-relaxed; }
+.prose-chat ul, .prose-chat ol { @apply my-2 pl-5 list-disc; }
+.prose-chat ol { @apply list-decimal; }
+.prose-chat li { @apply my-1; }
+.prose-chat strong { @apply text-heading font-semibold; }
+.prose-chat code { @apply bg-background px-1 py-0.5 rounded text-sm; }
+.prose-chat table { @apply w-full text-sm border-collapse my-3; }
+.prose-chat th, .prose-chat td { @apply border border-border px-2 py-1 text-left; }

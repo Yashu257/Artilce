@@ -1,45 +1,54 @@
-services:
-  # ============================================================================
-  # Cipla MedKnowledge Backend - PHP 8.3 Microservice (Docker)
-  # ============================================================================
-  - type: web
-    name: cipla-articles-backend
-    env: docker
-    dockerContext: ./backend
-    dockerfilePath: ./backend/Dockerfile
-    plan: free
-    region: oregon
-    envVars:
-      - key: PORT
-        value: 10000
-      - key: DB_HOST
-        sync: false
-      - key: DB_PORT
-        value: "3306"
-      - key: DB_NAME
-        sync: false
-      - key: DB_USER
-        sync: false
-      - key: DB_PASS
-        sync: false
-      - key: FRONTEND_ORIGIN
-        sync: false
+# Cipla MedKnowledge Platform v2 — Render Blueprint
+#
+# Deploy with: Render Dashboard -> New + -> Blueprint -> connect the repo.
+# Set the `sync: false` variables (DATABASE_URL, LLM keys) in the dashboard
+# before applying; never commit real values here.
+#
+# Topology (see docs/DEPLOYMENT.md):
+#   - Backend:  Docker web service, Express + TypeScript + Prisma (:4000,
+#     Render injects PORT). Runs `prisma migrate deploy` on start.
+#   - Frontend: Node web service (`npm run start`), NOT a static site.
+#     The Next.js app has dynamic routes (/articles/[slug],
+#     /documents/[id]) and no `output: 'export'` in next.config.js, so a
+#     static-site deploy would 404 on those routes (docs/DEPLOYMENT.md §2).
+#   - MySQL:    Render has no native MySQL. Use a managed MySQL host
+#     (e.g. PlanetScale / Aiven / Railway) and set DATABASE_URL to
+#     `mysql://<user>:<password>@<host>:3306/medical_knowledge_db`.
+#     Uploads on a free instance are ephemeral; see docs/DEPLOYMENT.md §3.
 
-  # ============================================================================
-  # Cipla MedKnowledge Frontend - React 19 + Vite (Static Site)
-  # ============================================================================
+services:
   - type: web
-    name: cipla-articles-frontend
-    env: static
-    rootDir: ./frontend
-    buildCommand: npm install && npm run build
-    staticPublishPath: ./dist
+    name: cipla-medknowledge-backend
+    runtime: docker
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
     plan: free
     region: oregon
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
+    healthCheckPath: /api/v1/health
     envVars:
-      - key: VITE_API_BASE_URL
-        sync: false
+      - key: NODE_ENV
+        value: production
+      - key: FRONTEND_ORIGIN
+        value: https://cipla-medknowledge-frontend.onrender.com
+      - key: DATABASE_URL
+        sync: false # set in the Render dashboard (managed MySQL, see above)
+      - key: JWT_SECRET
+        generateValue: true # Render-generated secret; rotation logs users out
+      - key: OPENAI_API_KEY
+        sync: false # optional; leave unset for the local TF-IDF fallback
+      - key: GEMINI_API_KEY
+        sync: false # optional; used only if no OpenAI key is set
+
+  - type: web
+    name: cipla-medknowledge-frontend
+    runtime: node
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    plan: free
+    region: oregon
+    envVars:
+      # Exact name the frontend reads (frontend/lib/api.ts); must include
+      # the /api/v1 suffix. NEXT_PUBLIC_ vars are baked in at build time.
+      - key: NEXT_PUBLIC_API_URL
+        value: https://cipla-medknowledge-backend.onrender.com/api/v1

@@ -1,249 +1,239 @@
-# Cipla MedKnowledge Clinical Intelligence Platform
+# Cipla MedKnowledge Clinical Intelligence Platform — v2
 
-An enterprise-grade, responsive **Medical Knowledge Platform** designed specifically for physicians, neurologists, and healthcare professionals. Built with pure white medical SaaS aesthetics (`#FFFFFF`), evidence-grounded AI intelligence, real peer-reviewed clinical publications, and interactive slide presentations.
+A medical knowledge platform for physicians, neurologists, and other
+healthcare professionals, built around 9 verified clinical publications
+and launch decks on cenobamate and epilepsy. It offers a searchable
+article library, a PDF document viewer, and an evidence-grounded AI
+assistant that answers only from those documents, with citations.
 
----
+> **Status:** v2 is built and integration-verified in the sandbox on
+> 2026-11-06 — see [docs/TESTING.md](docs/TESTING.md) for the actual
+> results. Frontend and backend builds pass (11 Next.js pages; `tsc`
+> clean), the RAG QA re-run is 11/11 with 60/60 citations verified, and
+> the live SSE chat streams grounded, cited answers. What is **not**
+> verified is anything needing a live MySQL database: there is no MySQL
+> or Docker in the sandbox, so login, seeded content, dashboard counts,
+> and authenticated-page screenshots are all still unproven. The
+> authoritative contract is `shared/API_CONTRACT.md`.
 
-## 1. Project Overview & Features
+## What it does
 
-- **9 Verified Clinical Publications & Launch Decks:**
-  - 📄 *LAUNCH DECK - EARLY INITIATION BETTER.pdf* (Freedon Study, *Epilepsia* 2026)
-  - 📄 *LAUNCH DECK - EFF IN TITRATION PHASE.pdf* (Study C017, *Acta Neurol Scand* 2022)
-  - 📄 *LAUNCH DECK - EVENTUALLY MONOTHERAPY.pdf* (Benavente et al., *Epileptic Disorders* 2026)
-  - 📄 *LAUNCH DECK - PHASE III LTE POST-HOC.pdf* (Study C021 Extension, *Epilepsia* 2021)
-  - 📄 *LAUNCH DECK - PHASE III LTE.pdf* (Zero DRESS Trial, *Epilepsia* 2020)
-  - 📄 *LAUNCH DECK - RWE - GERMAN - COMPARATIVE.pdf* (KORK Study, *Epilepsia Open* 2024)
-  - 📄 *LAUNCH DECK - RWE COMPARATIVE vs OTHER ASMs.pdf* (CNS Drugs, 2024)
-  - 📄 *LAUNCH DECK - ULTRA-REFRACTORY FOS.pdf* (Danish Epilepsy Centre, *Neurol Sci* 2025)
-  - 📄 *REDUCE 1 ASM SPANISH CONSENSUS.pdf* (SEEP Spanish Consensus, *Epilepsia Open* 2024)
+- **Articles** — browse, search, filter, and sort 9 verified clinical
+  publications; read full structured content; bookmark articles.
+- **Documents** — view the 9 launch-deck PDFs in an authenticated,
+  streaming PDF viewer (no public URLs).
+- **AI Assistant** — ask clinical questions; get answers grounded in
+  the documents with real citations (document, page, section, excerpt).
+  If the documents do not contain enough information, it says so
+  instead of guessing.
+- **Dashboard** — article/document counts, categories, recently viewed,
+  popular articles, recent activity — all computed from the database.
+- **Admin** — user list, document ingestion status, activity/audit feed,
+  document upload, reprocessing, and deletion.
 
-- **Interactive Presentation Deck Viewer:** High-resolution multi-page slide previews and figure galleries rendered directly from the PDF launch decks.
-- **Evidence-Grounded AI Assistant:** Fully active question-answering assistant citing indexed clinical protocols with transparent source navigation.
-- **Flexible Authentication:** Physician login supporting any `@gmail.com` address or demo credentials.
-- **Pure White Enterprise SaaS UI:** Clean typography, zero congestion, and responsive layouts across desktop, tablet, and mobile.
+## What was rebuilt vs the original (v1)
 
----
+The original project (`~/workspace/user/product/extracted/Artilce-main/`,
+read-only reference) was React 19 + Vite, a PHP 8.3 backend, and MySQL,
+with demo login (`doctor@example.com` / `Doctor123!`), 9 launch decks,
+and an AI assistant UI whose backend returned HTTP 503.
 
-## 2. Deploying on Render
+| Area | v1 (original) | v2 (this repo) |
+|---|---|---|
+| Frontend | React 19 + Vite (port 5173/5175) | Next.js 14/15 + TypeScript strict (port 3000) |
+| Backend | PHP 8.3, PDO, session cookies | Express + TypeScript + Prisma (port 4000) |
+| Database | MySQL via raw `schema.sql` / `seed.sql` | MySQL 8 via Prisma migrations, `medical_knowledge_db` |
+| Auth | PHP sessions; any `@gmail.com` address could sign in | httpOnly cookie `mkp_session` (JWT, 8 h); seeded accounts only; Gmail auto-auth removed |
+| AI assistant | UI only; `/chatbot/ask.php` returned 503 | Working RAG: pdf-parse ingestion, hybrid keyword+vector retrieval, SSE streaming, citations, per-user conversations |
+| RAG fallback | — | OpenAI embeddings → Gemini → local TF-IDF (`backend/data/vector-index.json`) |
+| API docs | — | Swagger UI at `/api-docs` |
+| Deployment | Render Blueprint (PHP Docker + Vite static) | Render Blueprint (Node Docker + Next.js) — see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) |
 
-This repository is pre-configured with a **`render.yaml` Blueprint** and a **Backend Dockerfile** for seamless deployment on Render.
+Content is unchanged in scope: the same 9 publications, 4 categories
+(Real-World Evidence (RWE); Phase III Clinical Trials & Efficacy;
+Titration & Dosing Guidelines; Monotherapy & Concomitant ASM
+Deprescribing), and the same demo doctor account. No dosages or trial
+results beyond the source articles and PDFs have been added.
 
-### Option A: One-Click Blueprint Deployment (Recommended)
+## Quickstart
 
-1. Push this repository to your GitHub account: `https://github.com/Yashu257/Artilce.git`
-2. Go to your [Render Dashboard](https://dashboard.render.com/).
-3. Click **New +** and select **Blueprint**.
-4. Connect your GitHub repository (`Yashu257/Artilce`).
-5. Render will automatically detect `render.yaml` and configure:
-   - **`cipla-articles-backend`** (PHP 8.3 Web Service running via Docker)
-   - **`cipla-articles-frontend`** (React 19 Vite Static Site with automatic routing rewrites)
-6. Click **Apply**. Both services will build and deploy automatically!
+Prerequisites: Node.js 20+, MySQL 8. Optional: an OpenAI or Gemini API
+key (without one, the assistant uses the local TF-IDF fallback).
 
----
-
-### Option B: Manual Service Deployment on Render
-
-#### 1. Deploy the Backend (Web Service)
-1. In Render Dashboard, click **New +** &rarr; **Web Service**.
-2. Connect your repository: `Yashu257/Artilce`.
-3. Set the following fields:
-   - **Name:** `cipla-articles-backend`
-   - **Language / Runtime:** `Docker`
-   - **Root Directory:** `backend`
-   - **Dockerfile Path:** `Dockerfile` (or `./backend/Dockerfile`)
-   - **Instance Type:** `Free`
-4. In **Environment Variables**, add:
-   - `PORT`: `10000`
-   - `FRONTEND_ORIGIN`: Your Render frontend URL (e.g. `https://cipla-articles-frontend.onrender.com`)
-   - *(Optional for MySQL)*: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASS`
-5. Click **Deploy Web Service**. Once live, copy your backend URL (e.g. `https://cipla-articles-backend.onrender.com`).
-
-#### 2. Deploy the Frontend (Static Site)
-1. In Render Dashboard, click **New +** &rarr; **Static Site**.
-2. Connect your repository: `Yashu257/Artilce`.
-3. Set the following fields:
-   - **Name:** `cipla-articles-frontend`
-   - **Root Directory:** `frontend`
-   - **Build Command:** `npm install && npm run build`
-   - **Publish Directory:** `dist`
-4. In **Environment Variables**, add:
-   - `VITE_API_BASE_URL`: Your backend URL from Step 1 (e.g. `https://cipla-articles-backend.onrender.com`)
-5. In **Redirects / Rewrites** tab:
-   - Click **Add Rule**
-   - **Source:** `/*`
-   - **Destination:** `/index.html`
-   - **Action:** `Rewrite`
-6. Click **Create Static Site**.
-
----
-
-## 3. Local Development Setup
-
-### Backend (PHP 8.2+)
 ```bash
-cd backend
-php -S 127.0.0.1:8001 router.php
-```
-
-### Frontend (Node.js 18+)
-```bash
-cd frontend
+# 1. Create the database (see docs/SETUP.md for the SQL)
+# 2. Backend
+cd backend && cp .env.example .env   # fill in DATABASE_URL + JWT_SECRET
 npm install
-npm run dev
-```
-Open [http://localhost:5175](http://localhost:5175) in your browser.
+npx prisma migrate dev && npm run seed && npm run ingest
+npm run dev                          # → http://localhost:4000
 
----
-
-## 2. Mandatory White Theme & Color Palette
-
-The entire interface strictly adheres to the pure white medical SaaS design rules:
-
-| Element | Color Hex | Usage |
-| :--- | :--- | :--- |
-| **Main Page Background** | `#FFFFFF` | Used across every single page, sidebar, header, and card |
-| **Sidebar Background** | `#FFFFFF` | Fixed left navigation with thin border |
-| **Header Background** | `#FFFFFF` | Sticky top navigation with breadcrumb and profile |
-| **Card Background** | `#FFFFFF` | White cards with subtle border and soft shadow |
-| **Primary Text** | `#17324D` | Dark navy for headings and high-contrast typography |
-| **Secondary Text** | `#64748B` | Slate gray for subtitles, metadata, and labels |
-| **Primary Teal** | `#078D7A` | Primary buttons, active navigation, links, and icons |
-| **Secondary Teal** | `#12B98B` | Accents and badges |
-| **Light Teal Accent** | `#E8F6F3` | Active navigation pill, assistant bubble, icon badge bg |
-| **Border Color** | `#E2E8F0` | Thin light-gray element separators |
-| **Input Background** | `#FFFFFF` | Clean form controls |
-| **Hover Background** | `#F8FAFC` | Subtle button and row hover feedback |
-| **Disabled Background** | `#F1F5F9` | Disabled inputs and pending feature pills |
-| **Error Color** | `#DC2626` | Validation warnings and logout action |
-| **Success Color** | `#15803D` | Active session indicators |
-
----
-
-## 3. Demo Credentials (Phase 1)
-
-For testing and reviewing the authenticated experience:
-
-- **Medical Email:** `doctor@example.com`
-- **Password:** `Doctor123!`
-- **Role:** Physician / Doctor (`Dr. Sarah Mitchell, MD`)
-- *Note:* A convenient **"Fill Demo Doctor"** button is built into the login card for one-click testing.
-
----
-
-## 4. Local Development Setup
-
-### Prerequisites
-- Node.js (v18+)
-- PHP (v8.1+ with PDO MySQL extension)
-- MySQL (v8.0+ or MariaDB 10.4+)
-
-### Step 1: Clone and Database Setup
-1. Import `database/schema.sql` into MySQL:
-   ```bash
-   mysql -u root -p < database/schema.sql
-   ```
-2. Import placeholder seed data from `database/seed.sql`:
-   ```bash
-   mysql -u root -p < database/seed.sql
-   ```
-
-### Step 2: Configure Environment Variables
-- Copy `frontend/.env.example` to `frontend/.env`:
-  ```env
-  VITE_API_BASE_URL=/api
-  ```
-- Optional database environment variables for PHP (defaults to `127.0.0.1:3306`, DB: `medical_knowledge_db`, User: `root`, Pass: `""`):
-  ```bash
-  export DB_HOST=127.0.0.1
-  export DB_PORT=3306
-  export DB_NAME=medical_knowledge_db
-  export DB_USER=root
-  export DB_PASS=your_password
-  ```
-
-### Step 3: Start PHP Backend
-```bash
-php -S 127.0.0.1:8000 backend/router.php
+# 3. Frontend (new terminal)
+cd frontend && npm install
+cp .env.example .env.local           # NEXT_PUBLIC_API_URL=http://localhost:4000/api/v1
+npm run dev                          # → http://localhost:3000
 ```
 
-### Step 4: Start Frontend
-In a new terminal:
-```bash
-cd frontend
-npm install
-npm run dev
+Full step-by-step setup, including troubleshooting, is in
+[docs/SETUP.md](docs/SETUP.md).
+
+## Demo credentials
+
+| Email | Password | Role |
+|---|---|---|
+| `doctor@example.com` | `Doctor123!` | Doctor — Dr. Sarah Mitchell, MD |
+| `admin@cipla.example` | `Admin123!` | Admin — admin-module testing only |
+
+Passwords are stored as bcrypt hashes only. These accounts are for
+local/demo use; rotate or disable them before any non-demo deployment.
+
+## Architecture (summary)
+
 ```
-Open [http://localhost:5173](http://localhost:5173) in your browser.
+Browser (Next.js :3000)
+  │  fetch, credentials: include, httpOnly cookie
+  ▼
+Express + TypeScript API (:4000) — /api/v1
+  ├── Auth (cookie JWT, RBAC doctor/admin)
+  ├── Articles / Documents / Dashboard / Admin (Prisma → MySQL 8)
+  └── Assistant (SSE) → RAG service → vector store
+        ├── OpenAI text-embedding-3-small (if OPENAI_API_KEY)
+        ├── Gemini embeddings (else if GEMINI_API_KEY)
+        └── Local TF-IDF index, backend/data/vector-index.json (fallback)
+PDFs live in backend/uploads/ and are streamed only through the
+authenticated file endpoint — never at a public URL.
+```
 
----
+Full detail, including the system diagram, data flows, and the rationale
+for Express + TypeScript over NestJS: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-## 5. Deployment to COACT Server (Production)
+## Documentation
 
-### Frontend Production Build
-1. Build the production bundle:
-   ```bash
-   cd frontend
-   npm run build
-   ```
-   The optimized production assets are generated in `frontend/dist/`.
-2. Copy the contents of `frontend/dist/` to your web server document root (e.g. `/var/www/html/` or public directory).
+| Document | Contents |
+|---|---|
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System diagram, components, data flows, auth/RBAC, security boundaries, framework choice, vector-store separation |
+| [docs/SETUP.md](docs/SETUP.md) | Prerequisites, local setup (backend + frontend), database, seed, ingest, troubleshooting |
+| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Render Blueprint, Docker, environment variables, CORS/cookies in prod, MySQL hosting |
+| [docs/MIGRATION.md](docs/MIGRATION.md) | The initial Prisma migration: 11 tables, 15 indexes, 9 FKs, schema↔migration verification, live migrate/seed commands |
+| [docs/INDEXING.md](docs/INDEXING.md) | RAG ingestion: 9/9 PDFs, 97 pages, 184 chunks/vectors |
+| [docs/AI_TEST_RESULTS.md](docs/AI_TEST_RESULTS.md) | RAG QA: 11/11 questions, 60/60 citations verified |
+| [docs/TESTING.md](docs/TESTING.md) | Test plan and results (verified 2026-11-06; DB-dependent tests marked not runnable in sandbox) |
+| [docs/API.md](docs/API.md) | All `/api/v1` endpoints with request/response examples, auth, errors, rate limits, Swagger |
+| [docs/SECURITY.md](docs/SECURITY.md) | bcrypt, httpOnly cookies, RBAC, rate limiting/lockout, validation, injection protection, file validation, headers/CORS, audit logs, secrets, prompt-injection protection, medical safety |
+| [docs/USER_GUIDE.md](docs/USER_GUIDE.md) | Doctor workflow (login, dashboard, articles, documents/PDF viewer, AI assistant, bookmarks) and admin workflow |
 
-### PHP Backend Deployment
-1. Upload the `backend/` directory to the server.
-2. Ensure PHP 8.1+ with `pdo_mysql`, `session`, and `json` extensions is enabled.
-3. Verify that `backend/.htaccess` is in place. It automatically enforces:
-   - Session cookie security flags (`HttpOnly`, `SameSite=Lax`)
-   - Security headers (`X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `X-XSS-Protection`)
-   - Protected directory blocking for `backend/config/`
-4. Set production database credentials via Apache `SetEnv` or system environment variables:
-   ```apache
-   SetEnv DB_HOST "127.0.0.1"
-   SetEnv DB_NAME "medical_knowledge_db"
-   SetEnv DB_USER "coact_db_user"
-   SetEnv DB_PASS "YourStrongSecretPassword"
-   SetEnv FRONTEND_ORIGIN "https://your-medical-platform.com"
-   ```
+The binding contract for all agents is
+[`shared/API_CONTRACT.md`](shared/API_CONTRACT.md) — docs, frontend,
+and backend must not diverge from it.
 
-### HTTPS & Secure Cookies Recommendation
-In production:
-- Ensure HTTPS is enabled via TLS/SSL certificate.
-- When accessed over HTTPS, the PHP session cookie automatically sets the `Secure` flag (`secure => true`, `samesite => 'None'` or `'Lax'`).
+## Project tree (verified 2026-11-06)
 
----
+```
+cipla-medknowledge-v2/
+├── .env.example            # pointer only — backend/.env + frontend/.env.local
+├── render.yaml             # Render Blueprint: backend Docker web service +
+│                           #   frontend Node web service (not a static site)
+├── README.md
+├── shared/
+│   └── API_CONTRACT.md     # binding contract for all agents
+├── docs/
+│   ├── ARCHITECTURE.md  API.md  SETUP.md  DEPLOYMENT.md  MIGRATION.md
+│   ├── SECURITY.md  USER_GUIDE.md  TESTING.md  INDEXING.md
+│   ├── AI_TEST_RESULTS.md
+│   └── screenshots/        # login.png (real) + README.md (capture steps)
+├── frontend/               # Next.js 14 + TS (11 pages, `npm run build` ✓)
+│   ├── app/                # login, dashboard, articles/[slug], documents/[id],
+│   │                       #   ai-assistant, admin, bookmarks, page.tsx
+│   ├── components/         # AppShell, Sidebar, TopNav, ArticleCard,
+│   │                       #   DocumentCard, PdfViewer, ChatMessage,
+│   │                       #   CitationPanel, SourcePreviewPanel, …
+│   ├── lib/                # api.ts, auth.ts, types.ts
+│   ├── middleware.ts       # redirects unauthenticated /dashboard etc. to /login
+│   ├── .env.example        # NEXT_PUBLIC_API_URL=http://localhost:4000/api/v1
+│   └── public/
+│       ├── cipla-logo.svg / cipla-logo.png
+│       ├── documents/      # the 9 real launch-deck PDFs
+│       ├── slides/         # 36 slide PNGs (4 per deck)
+│       └── thumbnails/     # 9 deck thumbnails
+└── backend/                # Express + TS + Prisma (tsc ✓, :4000)
+    ├── src/
+    │   ├── index.ts        # /health, /api/v1/health, /api-docs, routers
+    │   ├── config/         # env.ts, swagger.ts
+    │   ├── lib/            # prisma.ts, logger.ts, audit.ts
+    │   ├── middleware/     # auth.ts (mkp_session JWT), errorHandler.ts, rateLimit.ts
+    │   ├── modules/        # auth, articles, documents, dashboard, admin routes
+    │   ├── routes/         # assistant.ts (SSE chat)
+    │   ├── rag/            # assistant, retrieval, embeddings, chunking,
+    │   │                   #   extract, vectorStore, prompts, types, qdrant
+    │   ├── services/       # ingestion.ts
+    │   └── utils/          # response.ts, validation.ts
+    ├── scripts/            # ingest.ts, test-assistant.ts, indexing-report.ts
+    ├── prisma/
+    │   ├── schema.prisma   # 11 models, MySQL
+    │   ├── seed.ts / seed-data.json
+    │   └── migrations/20261106000000_init/migration.sql
+    ├── data/               # documents.json, indexing-report.json,
+    │                       #   vector-index.json (184 TF-IDF vectors)
+    ├── uploads/            # the 9 real launch-deck PDFs
+    ├── Dockerfile          # multi-stage Node 22; runs prisma migrate deploy
+    └── .env.example
+```
 
-## 6. Features Completed in Phase 1
+Generated files excluded above: `backend/dist/` (compiled output),
+`frontend/.next/`, and `node_modules/` in both workspaces.
 
-- [x] **Pure White Theme**: 100% compliant with pure white palette (`#FFFFFF`), subtle shadows, thin light-gray borders (`#E2E8F0`), and teal accents (`#078D7A`).
-- [x] **Page 1 (Login)**: Secure authentication form, email format validation, password visibility toggle, remember-me checkbox, demo credential quick-fill, and error alerts.
-- [x] **Page 2 (Dashboard)**: Welcome header for authenticated doctor, dynamic search bar, 5 category resource cards with derived article counts, 4 featured articles, and AI Assistant promo banner.
-- [x] **Page 3 (Articles Listing)**: Comprehensive catalog of 12 placeholder articles, real-time keyword search, category filter pills, sorting options (Newest, Oldest, Title A-Z, Title Z-A), and responsive load-more pagination.
-- [x] **Page 4 (Article Detail)**: Reusable reading template with executive summary, interactive Table of Contents (TOC), structured subsection paragraphs, comparative clinical matrix tables, related article cards, print button (`window.print()`), and share link copy action.
-- [x] **Page 5 (AI Assistant — UI Only)**: Visual interface with message history layout, example clinical question chips, grounded source citation area, and strictly **DISABLED** inputs and send button.
-- [x] **Core PHP Backend**:
-  - Reusable PDO connection (`backend/config/database.php`)
-  - Prepared statements for SQL injection prevention
-  - `password_hash()` and `password_verify()` authentication
-  - Session regeneration on login (`session_regenerate_id(true)`)
-  - Server-side auth protection middleware (`backend/middleware/auth.php`)
-  - Protected endpoints (`/articles/list.php`, `/articles/get.php`, `/auth/me.php`)
-  - Disabled chatbot endpoint returning HTTP 503 (`/chatbot/ask.php`)
-- [x] **MySQL Database**: Complete `schema.sql` and `seed.sql` with 12 structured articles and demo doctor account.
-- [x] **Zero Fabricated Content**: All articles and categories are strictly neutral placeholders awaiting official medical committee review.
+## API at a glance
 
----
+Base: `http://localhost:4000/api/v1` · Swagger: `http://localhost:4000/api-docs`
 
-## 7. Phase 2 Integration Roadmap
+- Auth: `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`,
+  `POST /auth/forgot-password`, `POST /auth/reset-password`
+- Articles: `GET /articles`, `GET /articles/:slugOrId`,
+  `GET /articles/categories`, `POST /articles/:id/bookmark`,
+  `GET /articles/bookmarks`, `POST /articles/:id/viewed`
+- Documents: `GET /documents`, `GET /documents/:id`,
+  `GET /documents/:id/file` (auth + streamed + Range),
+  `POST /documents`, `DELETE /documents/:id`,
+  `POST /documents/:id/reprocess` (admin)
+- Assistant: `POST /assistant/chat` (SSE), `GET /assistant/conversations`,
+  `GET /assistant/conversations/:id`, `DELETE /assistant/conversations/:id`,
+  `POST /assistant/feedback`
+- Dashboard: `GET /dashboard` · Admin: `GET /admin/users`,
+  `GET /admin/documents/status`, `GET /admin/activity` ·
+  Health: `GET /health`
 
-When the 12 approved clinical reference articles and AI model credentials arrive:
+See [docs/API.md](docs/API.md) for full request/response examples.
 
-1. **Official Medical Content Insertion**: Replace the 12 placeholder records in MySQL with finalized clinical guidelines, dosages, contraindications, and tables.
-2. **AI Knowledge Retrieval Engine**:
-   - Ingest the 12 articles into a vector store or full-text inverted index.
-   - Ground queries exclusively against the 12 approved articles (zero hallucination).
-3. **Backend Chatbot Activation**:
-   - Update `backend/chatbot/ask.php` to perform retrieval-augmented generation (RAG).
-   - Return structured response: answer text, article citations, subsection anchor, and confidence indicator.
-4. **Chatbot UI Activation**:
-   - Enable message input and send button in `ChatInterfacePlaceholder.jsx`.
-   - Remove "Phase 2 Disabled" badge.
-   - Connect message stream to `ask.php` endpoint.
+## Honest limitations
+
+- **Requires MySQL 8** and a running backend; there is no offline or
+  SQLite mode.
+- **An LLM key is optional but changes behaviour**: with an OpenAI or
+  Gemini key, the assistant uses embeddings + LLM generation; without
+  one, retrieval and answers fall back to local TF-IDF vectors with
+  extractive answers. The fallback is cited and grounded, but it is
+  not a fluent LLM summary.
+- **RAG fallback is extractive TF-IDF** — relevance ranking is
+  keyword-based, so phrasing-sensitive questions may retrieve less
+  well than with embeddings.
+- **OCR is not implemented for scanned PDFs.** Image-only scanned
+  PDFs ingest with little or no text and will not be searchable; use
+  text-based PDFs.
+- **Corpus is fixed at 9 documents.** The assistant knows only the
+  seeded launch decks/publications; it cannot answer general medical
+  questions, and it refuses rather than improvising.
+- **The assistant is a clinical information retrieval aid, not a
+  diagnostic or prescribing tool.** Answers carry a medical disclaimer
+  and must be checked against the full source publication.
+- **Demo credentials are baked into the seed** for local evaluation;
+  they must be rotated or disabled before any non-demo deployment.
+- **Uploads on Render's free tier are ephemeral** (see
+  [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)); durable file storage
+  needs a disk or object storage.
+- **Unverified areas** (need a live MySQL + a Render deploy): the
+  `prisma migrate deploy` + seed run, login with the seeded demo
+  accounts, seeded article/document/dashboard content, authenticated
+  page screenshots (only `docs/screenshots/login.png` exists so far),
+  the password-reset email provider, and an actual Render Blueprint
+  apply. LLM generation is untested (no key in the sandbox); the
+  assistant runs in local TF-IDF retrieval mode without one.

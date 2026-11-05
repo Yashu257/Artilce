@@ -1,19 +1,21 @@
-FROM php:8.3-cli-alpine
+FROM node:22-alpine AS deps
+WORKDIR /app
+COPY package.json package-lock.json* ./
+RUN npm install --no-audit --no-fund
 
-# Install PDO MySQL extension
-RUN docker-php-ext-install pdo pdo_mysql
-
-WORKDIR /var/www/html
-
-# Copy backend application
+FROM node:22-alpine AS build
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+RUN npx prisma generate && npm run build
 
-# Set file permissions
-RUN chmod -R 755 /var/www/html
-
-# Render dynamically sets PORT environment variable (default 10000)
-ENV PORT=10000
-EXPOSE 10000
-
-# Launch PHP server bound to all interfaces with router
-CMD ["sh", "-c", "php -S 0.0.0.0:${PORT:-10000} router.php"]
+FROM node:22-alpine AS runtime
+WORKDIR /app
+ENV NODE_ENV=production
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/dist ./dist
+COPY --from=build /app/prisma ./prisma
+COPY --from=build /app/package.json ./package.json
+COPY uploads ./uploads
+EXPOSE 4000
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/index.js"]

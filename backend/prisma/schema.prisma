@@ -1,0 +1,159 @@
+// Prisma schema — models exactly as specified in shared/API_CONTRACT.md.
+// Created by the RAG agent because no schema existed yet when the RAG work
+// started; the backend agent owns auth/articles and should reconcile/extend
+// this file rather than replace the model shapes below.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String    @id @default(cuid())
+  name         String
+  email        String    @unique
+  passwordHash String
+  role         String    @default("doctor") // doctor | admin
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  documents    Document[]
+  conversations Conversation[]
+  bookmarks    Bookmark[]
+  activityLogs ActivityLog[]
+  auditLogs    AuditLog[]
+  resetTokens  PasswordResetToken[]
+}
+
+model Category {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+}
+
+model Article {
+  id           String    @id @default(cuid())
+  title        String
+  slug         String    @unique
+  summary      String    @db.Text
+  category     String
+  content      String    @db.LongText
+  status       String    @default("published") // draft | published | archived
+  pdfFileName  String?
+  pdfPages     Int?
+  thumbnailUrl String?
+  publishedAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  bookmarks    Bookmark[]
+
+  @@index([slug])
+  @@index([category])
+  @@index([status])
+}
+
+model Document {
+  id           String          @id @default(cuid())
+  title        String
+  fileName     String
+  mimeType     String           @default("application/pdf")
+  size         Int              @default(0)
+  category     String
+  status       String           @default("pending") // pending | processing | ready | failed
+  pageCount    Int              @default(0)
+  version      Int              @default(1)
+  uploadedById String?
+  uploadedBy   User?            @relation(fields: [uploadedById], references: [id])
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  chunks       DocumentChunk[]
+
+  @@index([status])
+  @@index([category])
+}
+
+model DocumentChunk {
+  id           String   @id @default(cuid())
+  documentId   String
+  document     Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  page         Int
+  section      String?
+  content      String   @db.Text
+  chunkIndex   Int
+  embeddingJson String? @db.Text
+  createdAt    DateTime @default(now())
+
+  @@index([documentId])
+  @@index([documentId, chunkIndex])
+}
+
+model Conversation {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  messages  Message[]
+
+  @@index([userId])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           String // user | assistant
+  content        String       @db.Text
+  citationsJson  String?      @db.Text
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId])
+}
+
+model Bookmark {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  articleId String
+  article   Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, articleId])
+}
+
+model ActivityLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id])
+  action     String
+  entityType String
+  entityId   String
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  action    String
+  details   String   @db.Text
+  ip        String?
+  createdAt DateTime @default(now())
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String
+  expiresAt DateTime
+  usedAt    DateTime?
+}
