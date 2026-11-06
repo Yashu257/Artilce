@@ -45,13 +45,15 @@ assistantRouter.post(
       'Cache-Control': 'no-cache',
       Connection: 'keep-alive',
     });
+    const user = authed(req).user;
     const result = await answerQuestionStream(
-      authed(req).user!.id,
+      user!.id,
       body.conversationId,
       body.question,
       (token) => {
         res.write(`event: token\ndata: ${JSON.stringify({ token })}\n\n`);
       },
+      user,
     );
     // SSE streaming (contract). Token events above carry the answer text;
     // the done event carries the full result including `mode`

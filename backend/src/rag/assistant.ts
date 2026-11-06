@@ -60,6 +60,171 @@ export function deduplicateChunks(chunks: RetrievedChunk[]): RetrievedChunk[] {
 }
 
 /**
+ * Extract clean professional display name for greeting.
+ * If user email is e.g. yashwanth9883@gmail.com, resolves to "Yashwanth".
+ */
+export function getUserDisplayName(user?: { name?: string | null; email?: string | null } | null): string {
+  if (user?.name && user.name.trim().toLowerCase() !== 'doctor' && user.name.trim().length > 0) {
+    return user.name.trim();
+  }
+  if (user?.email) {
+    const handle = user.email.split('@')[0];
+    const cleanHandle = handle.replace(/[0-9._-]+$/, '').replace(/^[0-9._-]+/, '');
+    const nameCandidate = cleanHandle || handle;
+    if (nameCandidate) {
+      return nameCandidate.charAt(0).toUpperCase() + nameCandidate.slice(1);
+    }
+  }
+  return 'Doctor';
+}
+
+/**
+ * Check if the user query is a greeting or introduction.
+ */
+export function isGreeting(question: string): boolean {
+  const q = question.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').trim();
+  const greetingExact = [
+    'hi',
+    'hello',
+    'hey',
+    'hiya',
+    'hola',
+    'namaste',
+    'good morning',
+    'good afternoon',
+    'good evening',
+    'greetings',
+    'sup',
+    'yo',
+    'hi there',
+    'hello there',
+    'hey there',
+    'who are you',
+    'what is your name',
+    'what can you do',
+    'how can you help me',
+    'tell me about yourself',
+    'introduce yourself',
+    'help',
+    'start',
+  ];
+  if (greetingExact.includes(q)) return true;
+
+  // Short greetings like "hi bot", "hello medknow", "hey there"
+  if (/^(hi|hello|hey|good morning|good afternoon|good evening)\b/i.test(q) && q.split(/\s+/).length <= 4) {
+    const clinicalKeywords = [
+      'brivaracetam',
+      'epilepsy',
+      'seizure',
+      'trial',
+      'study',
+      'kork',
+      'dose',
+      'efficacy',
+      'asm',
+      'monotherapy',
+      'article',
+      'pdf',
+      'patient',
+    ];
+    if (!clinicalKeywords.some((k) => q.includes(k))) {
+      return true;
+    }
+  }
+  return false;
+}
+
+const CLINICAL_GUARDWORDS = [
+  'patient',
+  'dose',
+  'dosing',
+  'efficacy',
+  'trial',
+  'study',
+  'seizure',
+  'epilepsy',
+  'brivaracetam',
+  'kork',
+  'freedon',
+  'monotherapy',
+  'asm',
+  'treatment',
+  'adverse',
+  'tolerability',
+  'clinical',
+  'medical',
+  'therapy',
+  'retention',
+  'plasma',
+  'syndrome',
+  'sv2a',
+  'pediatric',
+  'geriatric',
+  'dr',
+  'doctor',
+  'cipla',
+  'article',
+  'publication',
+  'mg',
+  'safety',
+];
+
+/**
+ * Check if user query is out-of-scope (silly questions, math like 2+2, jokes, cooking, etc.)
+ */
+export function isOutOfScope(question: string): boolean {
+  const q = question.toLowerCase().trim();
+
+  // If question mentions any clinical or medical concept, it is NOT out-of-scope
+  if (CLINICAL_GUARDWORDS.some((word) => q.includes(word))) {
+    return false;
+  }
+
+  // Math equations / calculations: e.g. "2+2", "2 + 2", "5 * 10", "what is 2+2"
+  if (/^(\s*what\s+is\s+)?\s*\d+\s*[\+\-\*\/\^xX%]\s*\d+/i.test(q)) return true;
+  if (/^\s*\d+\s*[\+\-\*\/]\s*\d+\s*(\=|\?)?\s*$/.test(q)) return true;
+  if (/^(calculate|solve|evaluate)\s+[\d\s\+\-\*\/\(\)\^\.]+/i.test(q)) return true;
+
+  // Non-medical topics
+  const nonMedicalPatterns = [
+    /\btell\s+me\s+a\s+joke\b/i,
+    /\b(weather|forecast|temperature\s+in)\b/i,
+    /\b(recipe|how\s+to\s+cook|how\s+to\s+bake|ingredients\s+for)\b/i,
+    /\b(who\s+won\s+the|cricket\s+score|football\s+score|ipl|world\s+cup)\b/i,
+    /\b(movie|cinema|actor|actress|song|lyrics|box\s+office)\b/i,
+    /\b(write\s+a\s+poem|write\s+a\s+song|write\s+code|python\s+code|javascript\s+code)\b/i,
+    /\b(capital\s+of|president\s+of|prime\s+minister\s+of)\b/i,
+    /\b(bitcoin|crypto|stock\s+price|cryptocurrency)\b/i,
+  ];
+
+  for (const pattern of nonMedicalPatterns) {
+    if (pattern.test(q)) return true;
+  }
+
+  return false;
+}
+
+export function buildGreetingResponse(userName: string): string {
+  return (
+    `Hello **${userName}**! 👋\n\n` +
+    `I am **MedKnow**, your Cipla Clinical AI Assistant. I am here to help you navigate clinical evidence, trial data, and therapeutic publications across the indexed Cipla medical knowledge resources.\n\n` +
+    `**Here are a few clinical areas you can explore:**\n` +
+    `* **Clinical Trial Outcomes**: Efficacy and safety endpoints from the Freedon study and the German KORK real-world comparative trial.\n` +
+    `* **Dosing & Titration Protocols**: Rapid initiation strategies, titration schedules, and monotherapy conversion guidance.\n` +
+    `* **Pharmacology & Tolerability**: SV2A binding kinetics, retention rates, and drug-drug interaction profiles.\n\n` +
+    `How can I assist your clinical inquiry today?`
+  );
+}
+
+export function buildOutOfScopeResponse(): string {
+  return (
+    `I am **MedKnow**, an AI clinical assistant designed exclusively to support healthcare professionals with scientific evidence, clinical trials, and therapeutic data from the Cipla medical repository.\n\n` +
+    `I am unable to answer general, mathematical, or non-medical queries (such as calculations, jokes, or general trivia).\n\n` +
+    `Please feel free to ask questions regarding the indexed medical publications, clinical trial results, dosing guidelines, or therapeutic evidence.`
+  );
+}
+
+/**
  * Extractive fallback: synthesized cleanly when an external LLM key is not available
  * or during a temporary provider outage.
  */
@@ -175,9 +340,42 @@ export async function answerQuestion(
   userId: string,
   conversationId: string | undefined,
   question: string,
+  user?: { name?: string | null; email?: string | null } | null,
 ): Promise<AssistantAnswer> {
   const cleanQuestion = question.trim();
   if (!cleanQuestion) throw new Error('Question must not be empty.');
+
+  // 1. Handle Greetings / Introductions
+  if (isGreeting(cleanQuestion)) {
+    const userInfo =
+      user ||
+      (await prisma.user.findUnique({ where: { id: userId }, select: { name: true, email: true } }).catch(() => null));
+    const displayName = getUserDisplayName(userInfo);
+    const greeting = buildGreetingResponse(displayName);
+    const convId = await persistConversation(userId, conversationId, cleanQuestion, greeting, []);
+    return {
+      answer: greeting,
+      citations: [],
+      conversationId: convId,
+      mode: 'local-retrieval',
+      engine: 'conversational-greeting',
+      provider: 'medknow',
+    };
+  }
+
+  // 2. Handle Out-of-Scope / Non-Medical Queries (e.g. 2+2, jokes, weather, etc.)
+  if (isOutOfScope(cleanQuestion)) {
+    const denial = buildOutOfScopeResponse();
+    const convId = await persistConversation(userId, conversationId, cleanQuestion, denial, []);
+    return {
+      answer: denial,
+      citations: [],
+      conversationId: convId,
+      mode: 'local-retrieval',
+      engine: 'out-of-scope-denial',
+      provider: 'medknow',
+    };
+  }
 
   const { chunks, provider } = await retrieve(cleanQuestion, 6);
 
@@ -271,9 +469,52 @@ export async function answerQuestionStream(
   conversationId: string | undefined,
   question: string,
   onToken: (token: string) => void,
+  user?: { name?: string | null; email?: string | null } | null,
 ): Promise<AssistantAnswer> {
   const cleanQuestion = question.trim();
   if (!cleanQuestion) throw new Error('Question must not be empty.');
+
+  // 1. Handle Greetings / Introductions
+  if (isGreeting(cleanQuestion)) {
+    const userInfo =
+      user ||
+      (await prisma.user.findUnique({ where: { id: userId }, select: { name: true, email: true } }).catch(() => null));
+    const displayName = getUserDisplayName(userInfo);
+    const greeting = buildGreetingResponse(displayName);
+    const words = greeting.split(' ');
+    for (const word of words) {
+      onToken(word + ' ');
+      await new Promise((r) => setTimeout(r, 20));
+    }
+    const convId = await persistConversation(userId, conversationId, cleanQuestion, greeting, []);
+    return {
+      answer: greeting,
+      citations: [],
+      conversationId: convId,
+      mode: 'local-retrieval',
+      engine: 'conversational-greeting',
+      provider: 'medknow',
+    };
+  }
+
+  // 2. Handle Out-of-Scope / Non-Medical Queries (e.g. 2+2, jokes, etc.)
+  if (isOutOfScope(cleanQuestion)) {
+    const denial = buildOutOfScopeResponse();
+    const words = denial.split(' ');
+    for (const word of words) {
+      onToken(word + ' ');
+      await new Promise((r) => setTimeout(r, 20));
+    }
+    const convId = await persistConversation(userId, conversationId, cleanQuestion, denial, []);
+    return {
+      answer: denial,
+      citations: [],
+      conversationId: convId,
+      mode: 'local-retrieval',
+      engine: 'out-of-scope-denial',
+      provider: 'medknow',
+    };
+  }
 
   const { chunks, provider } = await retrieve(cleanQuestion, 6);
 
