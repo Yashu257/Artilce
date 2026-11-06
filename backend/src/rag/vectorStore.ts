@@ -69,7 +69,7 @@ export const KEYWORD_WEIGHT = 0.3;
  * local-tfidf provider; dense embeddings carry the semantics themselves
  * and are governed by their 0.55 hybrid threshold instead.
  */
-export const MIN_KEYWORD_RAW_LOCAL = 3.5;
+export const MIN_KEYWORD_RAW_LOCAL = 0.5;
 
 export function relevanceThreshold(provider: EmbeddingProvider): number {
   return provider === 'local-tfidf' ? 0.15 : 0.55;

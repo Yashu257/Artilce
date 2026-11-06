@@ -1,9 +1,12 @@
 /**
- * assistant.ts — answerQuestion(): retrieve -> deduplicate -> ground -> generate -> persist.
+ * assistant.ts — MedKnow Intelligent Conversational AI & Website Knowledge Assistant.
  *
- * Implements the plug-in contract in ./types.ts:
- *   export const ASSISTANT_AVAILABLE = true
- *   export const handleChat: AssistantHandler
+ * Implements the three knowledge domains:
+ * 1. Website & Platform Knowledge (features, routes, articles, bookmarking, PDF viewer, search)
+ * 2. Medical Knowledge & Publications (RAG on Cenobamate, Brivaracetam, clinical trials, dosing, safety)
+ * 3. Natural Conversation & Contextual Understanding (multi-turn follow-ups, simple explanations, comparisons)
+ *
+ * Rejects unrelated general-purpose questions (math, jokes, recipes, weather, coding, sports).
  */
 import { prisma } from '../lib/prisma';
 import { logger } from '../lib/logger';
@@ -12,11 +15,11 @@ import { retrieve, type RetrievedChunk } from './retrieval';
 import {
   INSUFFICIENT_INFORMATION,
   MEDICAL_DISCLAIMER,
-  SYSTEM_PROMPT,
-  GENERAL_SYSTEM_PROMPT,
-  buildGroundedPrompt,
+  MEDKNOW_SYSTEM_PROMPT,
+  buildConversationPrompt,
   cleanExcerptText,
 } from './prompts';
+import { getPlatformSystemContext } from './platformKnowledge';
 import type { AssistantHandler, ChatRequest, ChatResult } from './types';
 
 export const ASSISTANT_AVAILABLE = true;
@@ -31,6 +34,9 @@ export interface AssistantAnswer extends ChatResult {
 
 const OPENAI_CHAT_MODEL = 'gpt-4o-mini';
 const GEMINI_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-flash-latest'];
+
+export const OUT_OF_SCOPE_RESPONSE =
+  "I'm MedKnow, your Cipla Clinical AI Assistant. I'm designed to help you explore the medical knowledge and features available on this platform. I can assist with clinical research, medical publications, study summaries, safety information and navigating the knowledge repository. I can't help with unrelated general-purpose requests.";
 
 function withDisclaimer(body: string): string {
   return `${body.trim()}\n\n${MEDICAL_DISCLAIMER}`;
@@ -48,7 +54,6 @@ export function deduplicateChunks(chunks: RetrievedChunk[]): RetrievedChunk[] {
     if (!existing) {
       map.set(key, { ...c });
     } else {
-      // Merge excerpt if new text adds information
       if (!existing.excerpt.includes(c.excerpt.slice(0, 40))) {
         existing.excerpt = `${existing.excerpt}\n\n${c.excerpt}`;
       }
@@ -100,10 +105,12 @@ export function isGreeting(question: string): boolean {
     'hi there',
     'hello there',
     'hey there',
+    'hi medknow',
+    'hello medknow',
+    'hey medknow',
   ];
   if (greetingExact.includes(q)) return true;
 
-  // Short greetings like "hi bot", "hello medknow", "hey there"
   if (/^(hi|hello|hey|good morning|good afternoon|good evening)\b/i.test(q) && q.split(/\s+/).length <= 4) {
     const clinicalKeywords = [
       'brivaracetam',
@@ -129,198 +136,167 @@ export function isGreeting(question: string): boolean {
 }
 
 /**
- * Check if the user query is asking about the website, the assistant,
- * what questions they can ask, what information is available, or capabilities.
+ * Identify unrelated general-purpose requests that MedKnow must reject politely.
+ * (e.g. math calculations, jokes, romantic stories, cooking recipes, weather, programming, sports scores)
  */
-export function isPlatformOrCapabilityQuery(question: string): boolean {
-  const q = question.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+export function isUnrelatedOutOfScope(question: string): boolean {
+  const q = question.toLowerCase().trim();
 
-  // If question is asking about a specific clinical title, drug, or trial (e.g. "what is this Effectiveness and safety of cenobamate..."),
-  // let it proceed to RAG!
-  const clinicalKeywords = [
+  // Greetings, basic intros, or platform feature questions are IN-SCOPE
+  if (/^(hi|hello|hey|good\s+(morning|afternoon|evening)|namaste|greetings)\b/i.test(q)) return false;
+  if (/^(what is this|what can i do|what can you do|how (to|do i) use|help|guide me)\b/i.test(q)) return false;
+  if (/^(simplify|can you simplify|explain in simple|tell me more|what about|summarize|compare)\b/i.test(q)) return false;
+
+  // Questions mentioning any clinical, medical, platform, or website terms are IN-SCOPE
+  const inScopeKeywords = [
+    'cipla',
+    'medknow',
+    'website',
+    'platform',
+    'article',
+    'publication',
+    'study',
+    'trial',
+    'deck',
+    'pdf',
+    'citation',
+    'bookmark',
+    'search',
+    'feature',
+    'dashboard',
+    'doctor',
+    'patient',
     'cenobamate',
     'brivaracetam',
-    'kork',
-    'freedon',
-    'monotherapy',
-    'dual therapy',
     'epilepsy',
     'seizure',
     'asm',
-    'titration',
-    'retention',
+    'efficacy',
+    'safety',
     'adverse',
-    'sv2a',
+    'tolerability',
+    'dosing',
+    'titration',
+    'monotherapy',
+    'dual therapy',
+    'freedon',
+    'kork',
+    'c021',
+    'c017',
     'spanish',
     'consensus',
+    'retention',
+    'pharmacology',
+    'mechanism',
+    'sv2a',
+    'gaba',
+    'sodium',
+    'clobazam',
+    'lacosamide',
+    'perampanel',
+    'drug',
+    'medicine',
+    'medical',
+    'clinical',
+    'treatment',
+    'therapy',
+    'symptom',
+    'disease',
+    'syndrome',
+    'neurology',
+    'neurologist',
+    'evidence',
+    'guideline',
+    'dose',
     'mg',
-    'dosage',
+    'explore',
+    'learn',
   ];
-  if (clinicalKeywords.some((k) => q.includes(k))) {
+  if (inScopeKeywords.some((k) => q.includes(k))) {
     return false;
   }
 
-  // Exact or common phrases
-  const directPatterns = [
-    /^what is this(\s+about)?$/,
-    /^what is this\s+(website|platform|app|application|portal|tool|system|place)$/,
-    /^what is this\s+all\s+about$/,
-    /^what are you[a-z]*$/, // handles "what are you", "what are youo", "what are youu"
-    /^who are you[a-z]*$/,
-    /^what is your (name|role|purpose)$/,
-    /^what (can|should|do) i ask(\s+here|\s+over here)?$/,
-    /^what i (have to|can|should) ask(\s+over here|\s+here)?$/,
-    /^what (kind of )?(info|information|data)\s+(can|will|do) i get(\s+here|\s+over here)?$/,
-    /^what (can|do) you do(\s+here)?$/,
-    /^how (does this work|to use this|can this help me)$/,
-    /^tell me about (this|this website|this platform|yourself|medknowledge)$/,
-    /^about (this|this website|this platform|medknowledge)$/,
-    /^what is cipla medknowledge$/,
-    /^guide me(\s+here)?$/,
-    /^help(\s+me)?$/,
-  ];
+  // Purely unrelated requests
+  // 1. Math / Calculations: e.g. "2+2", "100 * 25", "100 x 25", "what is 2+2", "calculate 50 / 2"
+  if (/^(\s*what\s+is\s+)?\s*\d+\s*[\+\-\*\/\^xX%×÷]\s*\d+/i.test(q)) return true;
+  if (/^\s*\d+\s*[\+\-\*\/×÷]\s*\d+\s*(\=|\?)?\s*$/.test(q)) return true;
+  if (/^(calculate|solve|evaluate|compute)\s+[\d\s\+\-\*\/\(\)\^\.xX×÷]+/i.test(q)) return true;
 
-  if (directPatterns.some((p) => p.test(q))) {
+  // 2. Jokes, comedy
+  if (/\b(tell\s+me\s+a\s+joke|make\s+me\s+laugh|funny\s+joke)\b/i.test(q)) return true;
+
+  // 3. Creative fiction, romance, poetry
+  if (/\b(write\s+a\s+(romantic\s+story|love\s+story|story|poem|song|lyrics))\b/i.test(q)) return true;
+
+  // 4. Cooking, recipes, food
+  if (/\b(recipe|how\s+to\s+cook|how\s+to\s+bake|ingredients\s+for|make\s+a\s+cake|cooking\s+recipe)\b/i.test(q))
     return true;
-  }
 
-  // General conversational intent checks (when no clinical keywords are present)
-  const isAskingWhatThisIs =
-    /(what is this|about this website|about this platform|what this website|what this platform)/.test(q);
-  const isAskingWhatToAsk = /(what (can|should|to|do) i ask|what i have to ask|what questions)/.test(q);
-  const isAskingWhatInfo = /(what (kind of )?(info|information)|what data|what knowledge)/.test(q);
-  const isAskingIdentity = /(what|who) are you[a-z]*/.test(q);
-  const isAskingCapabilities = /(what can you do|what do you do|how can you help|how to use this)/.test(q);
-  const isAskingDocuments = /(what|which) (articles|documents|publications|decks|resources|papers)/.test(q);
+  // 5. Weather forecasts
+  if (/\b(weather|forecast|temperature|will\s+it\s+rain)\b/i.test(q)) return true;
 
-  return (
-    isAskingWhatThisIs ||
-    isAskingWhatToAsk ||
-    isAskingWhatInfo ||
-    isAskingIdentity ||
-    isAskingCapabilities ||
-    isAskingDocuments
-  );
-}
+  // 6. Coding / programming
+  if (/\b(write\s+(a\s+)?(python|javascript|typescript|c\+\+|java|html|css|sql|code|program|script))\b/i.test(q))
+    return true;
+  if (/\b(python\s+code|python\s+program|debug\s+this\s+code)\b/i.test(q)) return true;
 
-const CLINICAL_GUARDWORDS = [
-  'patient',
-  'dose',
-  'dosing',
-  'efficacy',
-  'trial',
-  'study',
-  'seizure',
-  'epilepsy',
-  'brivaracetam',
-  'kork',
-  'freedon',
-  'monotherapy',
-  'asm',
-  'treatment',
-  'adverse',
-  'tolerability',
-  'clinical',
-  'medical',
-  'therapy',
-  'retention',
-  'plasma',
-  'syndrome',
-  'sv2a',
-  'pediatric',
-  'geriatric',
-  'dr',
-  'doctor',
-  'cipla',
-  'article',
-  'publication',
-  'mg',
-  'safety',
-];
+  // 7. Sports, cricket, football, match scores
+  if (/\b(who\s+won\s+the|cricket\s+score|football\s+score|ipl\s+score|world\s+cup|match\s+score)\b/i.test(q))
+    return true;
 
-/**
- * Check if user query is out-of-scope (silly questions, math like 2+2, jokes, cooking, etc.)
- */
-export function isOutOfScope(question: string): boolean {
-  const q = question.toLowerCase().trim();
-
-  // If question mentions any clinical or medical concept, it is NOT out-of-scope
-  if (CLINICAL_GUARDWORDS.some((word) => q.includes(word))) {
-    return false;
-  }
-
-  // Math equations / calculations: e.g. "2+2", "2 + 2", "5 * 10", "what is 2+2"
-  if (/^(\s*what\s+is\s+)?\s*\d+\s*[\+\-\*\/\^xX%]\s*\d+/i.test(q)) return true;
-  if (/^\s*\d+\s*[\+\-\*\/]\s*\d+\s*(\=|\?)?\s*$/.test(q)) return true;
-  if (/^(calculate|solve|evaluate)\s+[\d\s\+\-\*\/\(\)\^\.]+/i.test(q)) return true;
-
-  // Non-medical topics
-  const nonMedicalPatterns = [
-    /\btell\s+me\s+a\s+joke\b/i,
-    /\b(weather|forecast|temperature\s+in)\b/i,
-    /\b(recipe|how\s+to\s+cook|how\s+to\s+bake|ingredients\s+for)\b/i,
-    /\b(who\s+won\s+the|cricket\s+score|football\s+score|ipl|world\s+cup)\b/i,
-    /\b(movie|cinema|actor|actress|song|lyrics|box\s+office)\b/i,
-    /\b(write\s+a\s+poem|write\s+a\s+song|write\s+code|python\s+code|javascript\s+code)\b/i,
-    /\b(capital\s+of|president\s+of|prime\s+minister\s+of)\b/i,
-    /\b(bitcoin|crypto|stock\s+price|cryptocurrency)\b/i,
-  ];
-
-  for (const pattern of nonMedicalPatterns) {
-    if (pattern.test(q)) return true;
-  }
+  // 8. General entertainment, cinema, celebrity trivia
+  if (/\b(box\s+office|celebrity|hollywood|bollywood|actor|actress)\b/i.test(q)) return true;
 
   return false;
 }
 
-export function buildGreetingResponse(userName: string): string {
-  return (
-    `Hello **${userName}**! 👋\n\n` +
-    `I am **MedKnow**, your Cipla Clinical AI Assistant. I am here to help you navigate clinical evidence, trial data, and therapeutic publications across the indexed Cipla medical knowledge resources.\n\n` +
-    `**Here are a few clinical areas you can explore:**\n` +
-    `* **Clinical Trial Outcomes**: Efficacy and safety endpoints from the Freedon study and the German KORK real-world comparative trial.\n` +
-    `* **Dosing & Titration Protocols**: Rapid initiation strategies, titration schedules, and monotherapy conversion guidance.\n` +
-    `* **Pharmacology & Tolerability**: SV2A binding kinetics, retention rates, and drug-drug interaction profiles.\n\n` +
-    `How can I assist your clinical inquiry today?`
-  );
-}
+/**
+ * Intelligent retrieval query expansion for multi-turn contextual follow-ups.
+ * (e.g. "What about safety?" -> "cenobamate safety tolerability adverse events")
+ */
+export function buildRetrievalQuery(question: string, history: Array<{ role: string; content: string }>): string {
+  const q = question.trim();
+  const clinicalKeywords = [
+    'cenobamate',
+    'brivaracetam',
+    'freedon',
+    'kork',
+    'c021',
+    'c017',
+    'spanish',
+    'consensus',
+    'titration',
+    'monotherapy',
+    'dual therapy',
+    'deprescribing',
+    'clobazam',
+    'lacosamide',
+    'perampanel',
+    'danish',
+    'adverse',
+    'retention',
+  ];
 
-export function buildPlatformOverviewResponse(userName: string): string {
-  return (
-    `### Welcome to Cipla MedKnowledge, **${userName}**! 🩺\n\n` +
-    `**Cipla MedKnowledge** is an evidence-grounded clinical intelligence platform designed for healthcare professionals. I am **MedKnow**, your dedicated Cipla Clinical AI Assistant.\n\n` +
-    `---\n\n` +
-    `### 1. What is this platform about?\n` +
-    `This platform provides rapid, evidence-grounded access to verified peer-reviewed publications and clinical launch decks for anti-seizure medications (such as **Cenobamate** and **Brivaracetam**). It helps physicians evaluate clinical trial results, safety profiles, and consensus treatment protocols.\n\n` +
-    `### 2. What kind of information will you get here?\n` +
-    `* **Clinical Trial Outcomes**: Detailed efficacy endpoints (≥50%, ≥75%, and 100% seizure freedom rates) from major clinical trials including the **Freedon study**, the **German KORK real-world comparative trial**, and international cohort studies.\n` +
-    `* **Dosing & Titration Protocols**: Initiation dosing, titration schedules, slow vs. rapid titration guidelines, and conversion protocols to **monotherapy** or **dual therapy**.\n` +
-    `* **Safety & Tolerability**: Long-term retention rates, adverse event management, SV2A binding kinetics, and pharmacokinetic drug-drug interactions with concomitant ASMs.\n` +
-    `* **Expert Consensus**: Evidence-based recommendations such as the **Spanish Consensus on reducing concomitant ASMs**.\n\n` +
-    `### 3. What can you ask over here?\n` +
-    `You can ask both broad clinical questions and highly specific study queries. For example:\n` +
-    `* *"What were the key efficacy findings and seizure freedom rates in the German KORK study?"*\n` +
-    `* *"How should concomitant ASMs be reduced according to the Spanish Consensus?"*\n` +
-    `* *"What is the titration schedule when converting a patient to Cenobamate monotherapy?"*\n` +
-    `* *"What are the most common adverse events reported in the real-world trials?"*\n` +
-    `* *"What does the clinical evidence say about patient retention rates over 12 months?"*\n\n` +
-    `---\n\n` +
-    `💡 **How it works**: Every clinical answer is synthesized directly from indexed medical publications with **clickable inline citations** [1], [2] that open the exact page of the original PDF deck.\n\n` +
-    `How can I assist your clinical inquiry today?`
-  );
-}
+  if (clinicalKeywords.some((k) => q.toLowerCase().includes(k))) {
+    return q;
+  }
 
-export function buildOutOfScopeResponse(): string {
-  return (
-    `I am **MedKnow**, an AI clinical assistant designed exclusively to support healthcare professionals with scientific evidence, clinical trials, and therapeutic data from the Cipla medical repository.\n\n` +
-    `I am unable to answer general, mathematical, or non-medical queries (such as calculations, jokes, or general trivia).\n\n` +
-    `Please feel free to ask questions regarding the indexed medical publications, clinical trial results, dosing guidelines, or therapeutic evidence.`
-  );
+  if (history.length > 0) {
+    const recentText = history
+      .map((h) => h.content)
+      .join(' ')
+      .toLowerCase();
+    const foundKeywords = clinicalKeywords.filter((k) => recentText.includes(k));
+    if (foundKeywords.length > 0) {
+      return `${foundKeywords.slice(0, 3).join(' ')} ${q}`;
+    }
+  }
+
+  return q;
 }
 
 /**
- * Extractive fallback: synthesized cleanly when an external LLM key is not available
- * or during a temporary provider outage.
+ * Extractive fallback when LLM is unavailable.
  */
 export function extractiveAnswer(question: string, chunks: RetrievedChunk[]): string {
   const queryTerms = new Set(tokenize(question));
@@ -349,18 +325,20 @@ export function extractiveAnswer(question: string, chunks: RetrievedChunk[]): st
 async function generateWithLlm(
   question: string,
   chunks: RetrievedChunk[],
+  history: Array<{ role: string; content: string }> = [],
+  platformContext: string = '',
 ): Promise<{ text: string; mode: string } | null> {
   const provider = getEmbeddingProvider();
-  const userPrompt = buildGroundedPrompt(question, chunks);
+  const userPrompt = buildConversationPrompt(question, chunks, history, platformContext);
 
   if (provider === 'openai' && process.env.OPENAI_API_KEY) {
     const { default: OpenAI } = await import('openai');
     const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const res = await client.chat.completions.create({
       model: OPENAI_CHAT_MODEL,
-      temperature: 0.1,
+      temperature: 0.2,
       messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'system', content: MEDKNOW_SYSTEM_PROMPT },
         { role: 'user', content: userPrompt },
       ],
     });
@@ -375,7 +353,7 @@ async function generateWithLlm(
         try {
           const model = client.getGenerativeModel({
             model: m,
-            systemInstruction: SYSTEM_PROMPT,
+            systemInstruction: MEDKNOW_SYSTEM_PROMPT,
           });
           const res = await model.generateContent({
             contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
@@ -396,24 +374,14 @@ async function generateWithLlm(
   return null;
 }
 
-async function generateGeneralWithLlm(
+async function generateWithLlmStream(
   question: string,
+  chunks: RetrievedChunk[],
+  history: Array<{ role: string; content: string }> = [],
+  platformContext: string = '',
+  onToken: (token: string) => void,
 ): Promise<{ text: string; mode: string } | null> {
-  const provider = getEmbeddingProvider();
-
-  if (provider === 'openai' && process.env.OPENAI_API_KEY) {
-    const { default: OpenAI } = await import('openai');
-    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-    const res = await client.chat.completions.create({
-      model: OPENAI_CHAT_MODEL,
-      temperature: 0.3,
-      messages: [
-        { role: 'system', content: GENERAL_SYSTEM_PROMPT },
-        { role: 'user', content: question },
-      ],
-    });
-    return { text: res.choices[0]?.message?.content?.trim() ?? '', mode: 'llm-openai' };
-  }
+  const userPrompt = buildConversationPrompt(question, chunks, history, platformContext);
 
   if (process.env.GEMINI_API_KEY) {
     try {
@@ -423,22 +391,40 @@ async function generateGeneralWithLlm(
         try {
           const model = client.getGenerativeModel({
             model: m,
-            systemInstruction: GENERAL_SYSTEM_PROMPT,
+            systemInstruction: MEDKNOW_SYSTEM_PROMPT,
           });
-          const res = await model.generateContent({
-            contents: [{ role: 'user', parts: [{ text: question }] }],
+          const responseStream = await model.generateContentStream({
+            contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
           });
-          const text = res.response.text().trim();
-          if (text) {
-            return { text, mode: `llm-gemini-${m}` };
+          let fullText = '';
+          for await (const chunk of responseStream.stream) {
+            const chunkText = chunk.text();
+            if (chunkText) {
+              fullText += chunkText;
+              onToken(chunkText);
+            }
+          }
+          if (fullText.trim()) {
+            return { text: fullText.trim(), mode: `llm-gemini-${m}` };
           }
         } catch (mErr) {
-          logger.warn(`[assistant] Gemini general generation on ${m} failed, trying next`, { error: String(mErr) });
+          logger.warn(`[assistant] Gemini stream on ${m} failed, trying next`, { error: String(mErr) });
         }
       }
     } catch (err) {
-      logger.warn('[assistant] Gemini general initialization failed', { error: String(err) });
+      logger.warn('[assistant] Gemini initialization failed', { error: String(err) });
     }
+  }
+
+  // Fallback to non-streaming generateWithLlm
+  const nonStream = await generateWithLlm(question, chunks, history, platformContext);
+  if (nonStream && nonStream.text) {
+    const words = nonStream.text.split(' ');
+    for (const w of words) {
+      onToken(w + ' ');
+      await new Promise((r) => setTimeout(r, 20));
+    }
+    return nonStream;
   }
 
   return null;
@@ -487,13 +473,28 @@ export async function answerQuestion(
   const cleanQuestion = question.trim();
   if (!cleanQuestion) throw new Error('Question must not be empty.');
 
-  // 1. Handle Greetings / Introductions
-  if (isGreeting(cleanQuestion)) {
+  // Load conversation history for contextual follow-ups
+  let history: Array<{ role: string; content: string }> = [];
+  if (conversationId) {
+    try {
+      const previousMessages = await prisma.message.findMany({
+        where: { conversationId },
+        orderBy: { createdAt: 'desc' },
+        take: 6,
+      });
+      history = previousMessages.reverse().map((m) => ({ role: m.role, content: m.content }));
+    } catch (e) {
+      logger.warn('[assistant] Could not load previous conversation history', { error: String(e) });
+    }
+  }
+
+  // 1. Initial Greeting / Conversational Welcome
+  if (isGreeting(cleanQuestion) && history.length === 0) {
     const userInfo =
       user ||
       (await prisma.user.findUnique({ where: { id: userId }, select: { name: true, email: true } }).catch(() => null));
     const displayName = getUserDisplayName(userInfo);
-    const greeting = buildGreetingResponse(displayName);
+    const greeting = `Hello **${displayName}**! I'm **MedKnow**, your Cipla Clinical AI Assistant. How can I help you explore clinical evidence, research publications or medical information today?`;
     const convId = await persistConversation(userId, conversationId, cleanQuestion, greeting, []);
     return {
       answer: greeting,
@@ -505,178 +506,65 @@ export async function answerQuestion(
     };
   }
 
-  // 2. Handle Platform Overview / Capabilities / "What is this" / "What can I ask" queries
-  if (isPlatformOrCapabilityQuery(cleanQuestion)) {
-    const userInfo =
-      user ||
-      (await prisma.user.findUnique({ where: { id: userId }, select: { name: true, email: true } }).catch(() => null));
-    const displayName = getUserDisplayName(userInfo);
-    const overview = buildPlatformOverviewResponse(displayName);
-    const convId = await persistConversation(userId, conversationId, cleanQuestion, overview, []);
+  // 2. Clear Out-of-Scope Detection (math, jokes, recipes, weather, programming, sports)
+  if (isUnrelatedOutOfScope(cleanQuestion)) {
+    const denial = OUT_OF_SCOPE_RESPONSE;
+    const convId = await persistConversation(userId, conversationId, cleanQuestion, denial, []);
     return {
-      answer: overview,
+      answer: denial,
       citations: [],
       conversationId: convId,
       mode: 'local-retrieval',
-      engine: 'platform-guide',
+      engine: 'out-of-scope-denial',
       provider: 'medknow',
     };
   }
 
-  const { chunks, provider } = await retrieve(cleanQuestion, 6);
+  // 3. Resolve context for follow-up queries
+  const retrievalQuery = buildRetrievalQuery(cleanQuestion, history);
 
-  // If no document chunks match (or general query), answer via general LLM!
-  if (chunks.length === 0) {
-    const general = await generateGeneralWithLlm(cleanQuestion);
-    let answer: string;
-    let mode: AssistantMode;
-    let engine: string;
-    if (general && general.text) {
-      answer = general.text;
-      mode = 'llm';
-      engine = general.mode;
-    } else {
-      answer = `I am **MedKnow**, your Cipla AI Assistant. How can I help you today? Please feel free to ask any medical, clinical, or general inquiry.`;
-      mode = 'local-retrieval';
-      engine = 'fallback-general';
-    }
-    const convId = await persistConversation(userId, conversationId, cleanQuestion, answer, []);
-    return { answer, citations: [], conversationId: convId, mode, engine, provider };
-  }
-
-  // Deduplicate chunks from the same document & page
+  // 4. Retrieve matching medical document chunks
+  const { chunks, provider } = await retrieve(retrievalQuery, 6);
   const dedupedChunks = deduplicateChunks(chunks);
 
-  const llm = await generateWithLlm(cleanQuestion, dedupedChunks);
+  // 5. Get structured platform knowledge registry
+  const platformContext = getPlatformSystemContext();
+
+  // 6. Generate answer using MedKnow LLM
+  const llm = await generateWithLlm(cleanQuestion, dedupedChunks, history, platformContext);
+
   let answer: string;
   let mode: AssistantMode;
   let engine: string;
+  let citationsToReturn: RetrievedChunk[] = [];
+
   if (llm && llm.text) {
-    answer = withDisclaimer(llm.text);
+    answer = llm.text;
     mode = 'llm';
     engine = llm.mode;
+    if (dedupedChunks.length > 0 && /\[\d+\]/.test(llm.text)) {
+      citationsToReturn = dedupedChunks;
+    }
   } else {
-    answer = withDisclaimer(extractiveAnswer(cleanQuestion, dedupedChunks));
-    mode = 'local-retrieval';
-    engine = 'extractive';
+    if (dedupedChunks.length > 0) {
+      answer = withDisclaimer(extractiveAnswer(cleanQuestion, dedupedChunks));
+      mode = 'local-retrieval';
+      engine = 'extractive';
+      citationsToReturn = dedupedChunks;
+    } else {
+      answer = `I am **MedKnow**, your Cipla Clinical AI Assistant. I can help you explore medical research publications, summarize clinical studies, compare trial evidence, explain pharmacology, and navigate features on the Cipla MedKnowledge platform. How can I assist your clinical inquiry today?`;
+      mode = 'local-retrieval';
+      engine = 'fallback-general';
+    }
   }
 
-  const convId = await persistConversation(userId, conversationId, cleanQuestion, answer, dedupedChunks);
-  return { answer, citations: dedupedChunks, conversationId: convId, mode, engine, provider };
+  const convId = await persistConversation(userId, conversationId, cleanQuestion, answer, citationsToReturn);
+  return { answer, citations: citationsToReturn, conversationId: convId, mode, engine, provider };
 }
 
 export const handleChat: AssistantHandler = async (req: ChatRequest): Promise<ChatResult> => {
   return answerQuestion(req.userId, req.conversationId, req.question);
 };
-
-async function generateWithLlmStream(
-  question: string,
-  chunks: RetrievedChunk[],
-  onToken: (token: string) => void,
-): Promise<{ text: string; mode: string } | null> {
-  const userPrompt = buildGroundedPrompt(question, chunks);
-
-  if (process.env.GEMINI_API_KEY) {
-    try {
-      const { GoogleGenerativeAI } = await import('@google/generative-ai');
-      const client = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string);
-      for (const m of GEMINI_MODELS) {
-        try {
-          const model = client.getGenerativeModel({
-            model: m,
-            systemInstruction: SYSTEM_PROMPT,
-          });
-          const responseStream = await model.generateContentStream({
-            contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
-          });
-          let fullText = '';
-          for await (const chunk of responseStream.stream) {
-            const chunkText = chunk.text();
-            if (chunkText) {
-              fullText += chunkText;
-              onToken(chunkText);
-            }
-          }
-          if (fullText.trim()) {
-            return { text: fullText.trim(), mode: `llm-gemini-${m}` };
-          }
-        } catch (mErr) {
-          logger.warn(`[assistant] Gemini stream on ${m} failed, trying next`, { error: String(mErr) });
-        }
-      }
-    } catch (err) {
-      logger.warn('[assistant] Gemini initialization failed', { error: String(err) });
-    }
-  }
-
-  // Fallback to non-streaming generateWithLlm
-  const nonStream = await generateWithLlm(question, chunks);
-  if (nonStream && nonStream.text) {
-    const words = nonStream.text.split(' ');
-    for (const w of words) {
-      onToken(wordClean(w) + ' ');
-      await new Promise((r) => setTimeout(r, 20));
-    }
-    return nonStream;
-  }
-
-  return null;
-}
-
-function wordClean(w: string): string {
-  return w;
-}
-
-async function generateGeneralWithLlmStream(
-  question: string,
-  onToken: (token: string) => void,
-): Promise<{ text: string; mode: string } | null> {
-  if (process.env.GEMINI_API_KEY) {
-    try {
-      const { GoogleGenerativeAI } = await import('@google/generative-ai');
-      const client = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string);
-      for (const m of GEMINI_MODELS) {
-        try {
-          const model = client.getGenerativeModel({
-            model: m,
-            systemInstruction: GENERAL_SYSTEM_PROMPT,
-          });
-          const responseStream = await model.generateContentStream({
-            contents: [{ role: 'user', parts: [{ text: question }] }],
-          });
-          let fullText = '';
-          for await (const chunk of responseStream.stream) {
-            const chunkText = chunk.text();
-            if (chunkText) {
-              fullText += chunkText;
-              onToken(chunkText);
-            }
-          }
-          if (fullText.trim()) {
-            return { text: fullText.trim(), mode: `llm-gemini-${m}` };
-          }
-        } catch (mErr) {
-          logger.warn(`[assistant] Gemini general stream on ${m} failed, trying next`, { error: String(mErr) });
-        }
-      }
-    } catch (err) {
-      logger.warn('[assistant] Gemini general initialization failed', { error: String(err) });
-    }
-  }
-
-  // Fallback to non-streaming generateGeneralWithLlm
-  const nonStream = await generateGeneralWithLlm(question);
-  if (nonStream && nonStream.text) {
-    const words = nonStream.text.split(' ');
-    for (const w of words) {
-      onToken(w + ' ');
-      await new Promise((r) => setTimeout(r, 20));
-    }
-    return nonStream;
-  }
-
-  return null;
-}
 
 export async function answerQuestionStream(
   userId: string,
@@ -688,15 +576,29 @@ export async function answerQuestionStream(
   const cleanQuestion = question.trim();
   if (!cleanQuestion) throw new Error('Question must not be empty.');
 
-  // 1. Handle Greetings / Introductions
-  if (isGreeting(cleanQuestion)) {
+  // Load conversation history for contextual follow-ups
+  let history: Array<{ role: string; content: string }> = [];
+  if (conversationId) {
+    try {
+      const previousMessages = await prisma.message.findMany({
+        where: { conversationId },
+        orderBy: { createdAt: 'desc' },
+        take: 6,
+      });
+      history = previousMessages.reverse().map((m) => ({ role: m.role, content: m.content }));
+    } catch (e) {
+      logger.warn('[assistant] Could not load previous conversation history', { error: String(e) });
+    }
+  }
+
+  // 1. Initial Greeting / Conversational Welcome
+  if (isGreeting(cleanQuestion) && history.length === 0) {
     const userInfo =
       user ||
       (await prisma.user.findUnique({ where: { id: userId }, select: { name: true, email: true } }).catch(() => null));
     const displayName = getUserDisplayName(userInfo);
-    const greeting = buildGreetingResponse(displayName);
-    const words = greeting.split(' ');
-    for (const word of words) {
+    const greeting = `Hello **${displayName}**! I'm **MedKnow**, your Cipla Clinical AI Assistant. How can I help you explore clinical evidence, research publications or medical information today?`;
+    for (const word of greeting.split(' ')) {
       onToken(word + ' ');
       await new Promise((r) => setTimeout(r, 20));
     }
@@ -711,43 +613,61 @@ export async function answerQuestionStream(
     };
   }
 
-  // 2. Handle Platform Overview / Capabilities / "What is this" / "What can I ask" queries
-  if (isPlatformOrCapabilityQuery(cleanQuestion)) {
-    const userInfo =
-      user ||
-      (await prisma.user.findUnique({ where: { id: userId }, select: { name: true, email: true } }).catch(() => null));
-    const displayName = getUserDisplayName(userInfo);
-    const overview = buildPlatformOverviewResponse(displayName);
-    const words = overview.split(' ');
-    for (const word of words) {
+  // 2. Clear Out-of-Scope Detection (math, jokes, recipes, weather, programming, sports)
+  if (isUnrelatedOutOfScope(cleanQuestion)) {
+    const denial = OUT_OF_SCOPE_RESPONSE;
+    for (const word of denial.split(' ')) {
       onToken(word + ' ');
-      await new Promise((r) => setTimeout(r, 15));
+      await new Promise((r) => setTimeout(r, 20));
     }
-    const convId = await persistConversation(userId, conversationId, cleanQuestion, overview, []);
+    const convId = await persistConversation(userId, conversationId, cleanQuestion, denial, []);
     return {
-      answer: overview,
+      answer: denial,
       citations: [],
       conversationId: convId,
       mode: 'local-retrieval',
-      engine: 'platform-guide',
+      engine: 'out-of-scope-denial',
       provider: 'medknow',
     };
   }
 
-  const { chunks, provider } = await retrieve(cleanQuestion, 6);
+  // 3. Resolve context for follow-up queries
+  const retrievalQuery = buildRetrievalQuery(cleanQuestion, history);
 
-  // If no document chunks match (or general query), answer via general LLM stream!
-  if (chunks.length === 0) {
-    const streamed = await generateGeneralWithLlmStream(cleanQuestion, onToken);
-    let answer: string;
-    let mode: AssistantMode;
-    let engine: string;
-    if (streamed && streamed.text) {
-      answer = streamed.text;
-      mode = 'llm';
-      engine = streamed.mode;
+  // 4. Retrieve matching medical document chunks
+  const { chunks, provider } = await retrieve(retrievalQuery, 6);
+  const dedupedChunks = deduplicateChunks(chunks);
+
+  // 5. Get structured platform knowledge registry
+  const platformContext = getPlatformSystemContext();
+
+  // 6. Generate answer using MedKnow LLM Stream
+  const streamed = await generateWithLlmStream(cleanQuestion, dedupedChunks, history, platformContext, onToken);
+
+  let answer: string;
+  let mode: AssistantMode;
+  let engine: string;
+  let citationsToReturn: RetrievedChunk[] = [];
+
+  if (streamed && streamed.text) {
+    answer = streamed.text;
+    mode = 'llm';
+    engine = streamed.mode;
+    if (dedupedChunks.length > 0 && /\[\d+\]/.test(streamed.text)) {
+      citationsToReturn = dedupedChunks;
+    }
+  } else {
+    if (dedupedChunks.length > 0) {
+      answer = withDisclaimer(extractiveAnswer(cleanQuestion, dedupedChunks));
+      mode = 'local-retrieval';
+      engine = 'extractive';
+      citationsToReturn = dedupedChunks;
+      for (const word of answer.split(' ')) {
+        onToken(word + ' ');
+        await new Promise((r) => setTimeout(r, 20));
+      }
     } else {
-      answer = `I am **MedKnow**, your Cipla AI Assistant. How can I help you today? Please feel free to ask any medical, clinical, or general inquiry.`;
+      answer = `I am **MedKnow**, your Cipla Clinical AI Assistant. I can help you explore medical research publications, summarize clinical studies, compare trial evidence, explain pharmacology, and navigate features on the Cipla MedKnowledge platform. How can I assist your clinical inquiry today?`;
       mode = 'local-retrieval';
       engine = 'fallback-general';
       for (const word of answer.split(' ')) {
@@ -755,34 +675,8 @@ export async function answerQuestionStream(
         await new Promise((r) => setTimeout(r, 20));
       }
     }
-    const convId = await persistConversation(userId, conversationId, cleanQuestion, answer, []);
-    return { answer, citations: [], conversationId: convId, mode, engine, provider };
   }
 
-  const dedupedChunks = deduplicateChunks(chunks);
-
-  const streamed = await generateWithLlmStream(cleanQuestion, dedupedChunks, onToken);
-  let answer: string;
-  let mode: AssistantMode;
-  let engine: string;
-
-  if (streamed && streamed.text) {
-    answer = withDisclaimer(streamed.text);
-    mode = 'llm';
-    engine = streamed.mode;
-    onToken('\n\n' + MEDICAL_DISCLAIMER);
-  } else {
-    const rawAnswer = extractiveAnswer(cleanQuestion, dedupedChunks);
-    answer = withDisclaimer(rawAnswer);
-    mode = 'local-retrieval';
-    engine = 'extractive';
-    const words = answer.split(' ');
-    for (const word of words) {
-      onToken(word + ' ');
-      await new Promise((r) => setTimeout(r, 20));
-    }
-  }
-
-  const convId = await persistConversation(userId, conversationId, cleanQuestion, answer, dedupedChunks);
-  return { answer, citations: dedupedChunks, conversationId: convId, mode, engine, provider };
+  const convId = await persistConversation(userId, conversationId, cleanQuestion, answer, citationsToReturn);
+  return { answer, citations: citationsToReturn, conversationId: convId, mode, engine, provider };
 }
