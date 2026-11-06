@@ -44,9 +44,9 @@ function LoginForm() {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-md rounded-lg border border-border bg-surface p-8 shadow-sm">
         <div className="mb-6 flex flex-col items-center text-center">
-          <Image src="/cipla-logo.svg" alt="Cipla" width={140} height={48} className="h-12 w-auto" priority />
-          <h1 className="mt-4 text-xl font-semibold text-heading">MedKnowledge</h1>
-          <p className="mt-1 text-sm text-body">Clinical Intelligence Platform — for healthcare professionals</p>
+          <Image src="/cipla-logo.png" alt="Cipla" width={160} height={52} className="h-12 w-auto object-contain" priority />
+          <h1 className="mt-4 text-xl font-bold text-heading">MedKnowledge</h1>
+          <p className="mt-1 text-xs text-body">Clinical Knowledge Platform — For Healthcare Professionals</p>
         </div>
         {serverError && (
           <div className="mb-4 flex items-start gap-2 rounded-md border border-error/30 bg-red-50 px-3 py-2 text-sm text-error" role="alert">

@@ -42,6 +42,9 @@ function asList<T>(data: unknown): { items: T[]; total: number } {
     if (Array.isArray(d.items)) return { items: d.items as T[], total: Number(d.total ?? d.items.length) };
     if (Array.isArray(d.articles)) return { items: d.articles as T[], total: Number(d.total ?? d.articles.length) };
     if (Array.isArray(d.documents)) return { items: d.documents as T[], total: Number(d.total ?? d.documents.length) };
+    if (Array.isArray(d.conversations)) return { items: d.conversations as T[], total: Number(d.total ?? d.conversations.length) };
+    if (Array.isArray(d.users)) return { items: d.users as T[], total: Number(d.total ?? d.users.length) };
+    if (Array.isArray(d.categories)) return { items: d.categories as T[], total: Number(d.total ?? d.categories.length) };
   }
   return { items: [], total: 0 };
 }

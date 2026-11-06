@@ -16,9 +16,20 @@ export default function Sidebar({ collapsed, onToggle, user }: { collapsed: bool
   const pathname = usePathname();
   return (
     <aside className={`fixed inset-y-0 left-0 z-40 flex flex-col border-r border-border bg-surface transition-all ${collapsed ? "w-16" : "w-64"}`}>
-      <div className="flex h-16 items-center gap-2 border-b border-border px-3">
-        <Image src="/cipla-logo.svg" alt="Cipla" width={collapsed ? 32 : 96} height={32} className="h-8 w-auto shrink-0" priority />
-        {!collapsed && <span className="text-sm font-semibold text-heading">MedKnowledge</span>}
+      <div className="flex h-16 items-center gap-2.5 border-b border-border px-3 bg-white">
+        <Image
+          src="/cipla-logo.png"
+          alt="Cipla"
+          width={collapsed ? 36 : 96}
+          height={32}
+          className="h-7 w-auto object-contain shrink-0"
+          priority
+        />
+        {!collapsed && (
+          <span className="text-xs font-extrabold uppercase tracking-wider text-teal-950 border-l border-slate-200 pl-2">
+            MedKnowledge
+          </span>
+        )}
       </div>
       <nav className="flex-1 space-y-1 overflow-y-auto p-2">
         {NAV.map((item) => {
