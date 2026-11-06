@@ -17,12 +17,15 @@ function DocumentDetailContent() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!id) return;
+    if (!id || id === "doc-undefined" || id === "undefined") {
+      router.replace("/articles");
+      return;
+    }
     api
       .getDocument(id)
       .then(setDoc)
       .catch((e) => setError(apiErrorMessage(e)));
-  }, [id]);
+  }, [id, router]);
 
   if (error) {
     return (
@@ -32,12 +35,20 @@ function DocumentDetailContent() {
             <AlertCircle className="h-4 w-4 text-rose-600" /> Document Not Found
           </p>
           <p className="mt-1 text-xs text-rose-700">{error}</p>
-          <button
-            onClick={() => router.back()}
-            className="mt-4 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-rose-300 text-rose-800 hover:bg-rose-100/50 transition-colors"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" /> Go Back
-          </button>
+          <div className="mt-4 flex items-center gap-3">
+            <button
+              onClick={() => router.back()}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-rose-300 text-rose-800 hover:bg-rose-100/50 transition-colors"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" /> Go Back
+            </button>
+            <button
+              onClick={() => router.push("/articles")}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-teal-700 text-white hover:bg-teal-800 transition-colors"
+            >
+              <FileText className="h-3.5 w-3.5" /> Browse Clinical Publications
+            </button>
+          </div>
         </div>
       </div>
     );

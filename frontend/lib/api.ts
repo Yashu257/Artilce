@@ -73,7 +73,11 @@ export const api = {
     const list = asList<Article>(r.data);
     return { items: list.items, total: r.meta?.total ?? list.total, meta: r.meta };
   },
-  getArticle: async (slugOrId: string): Promise<Article> => unwrap(await request<Article>(`/articles/${encodeURIComponent(slugOrId)}`)),
+  getArticle: async (slugOrId: string): Promise<Article> => {
+    const r = await request<any>(`/articles/${encodeURIComponent(slugOrId)}`);
+    const data = unwrap(r);
+    return data?.article ?? data;
+  },
   getCategories: async (): Promise<Category[]> => {
     const r = await request<unknown>("/articles/categories");
     if (!r.success) throw new Error(r.error?.message || "Failed to load categories");
@@ -97,7 +101,11 @@ export const api = {
     if (!r.success) throw new Error(r.error?.message || "Failed to load documents");
     return asList<DocumentItem>(r.data).items;
   },
-  getDocument: async (id: string): Promise<DocumentItem> => unwrap(await request<DocumentItem>(`/documents/${encodeURIComponent(id)}`)),
+  getDocument: async (id: string): Promise<DocumentItem> => {
+    const r = await request<any>(`/documents/${encodeURIComponent(id)}`);
+    const data = unwrap(r);
+    return data?.document ?? data;
+  },
   documentFileUrl: (id: string) => `${API_BASE}/documents/${encodeURIComponent(id)}/file`,
   uploadDocument: async (form: FormData): Promise<DocumentItem> => {
     const res = await fetch(`${API_BASE}/documents`, { method: "POST", credentials: "include", body: form });
@@ -115,10 +123,12 @@ export const api = {
     return asList<Conversation>(r.data).items;
   },
   getConversation: async (id: string): Promise<Conversation> => {
-    const c = unwrap(await request<Conversation>(`/assistant/conversations/${encodeURIComponent(id)}`));
+    const r = await request<any>(`/assistant/conversations/${encodeURIComponent(id)}`);
+    const raw = unwrap(r);
+    const c = (raw?.conversation ?? raw) as Conversation;
     // Backend stores citations as a JSON string (citationsJson) on Message;
     // normalise to the typed citations array the UI renders.
-    if (c.messages) {
+    if (c?.messages) {
       c.messages = c.messages.map((m) => {
         let citations = m.citations;
         if (!citations && m.citationsJson) {

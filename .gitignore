@@ -34,3 +34,5 @@ Thumbs.db
 .cache/
 .turbo/
 *.tsbuildinfo
+frontend/public/assets/
+frontend/public/assests/

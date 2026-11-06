@@ -44,14 +44,81 @@ function serializeDocument(doc: Document) {
   };
 }
 
-/** Resolve a stored fileName to a path strictly inside uploads/. */
+/** Resolve a stored fileName to a path, checking uploads/ as well as frontend asset directories. */
 function resolveUploadPath(fileName: string): string {
   const safe = path.basename(fileName);
-  const full = path.join(uploadsDir, safe);
-  if (!full.startsWith(uploadsDir + path.sep)) {
-    throw new ApiError(400, 'BAD_REQUEST', 'Invalid file name.');
+  const candidateDirs = [
+    uploadsDir,
+    path.resolve(process.cwd(), '../frontend/assests/PDF'),
+    path.resolve(process.cwd(), '../frontend/assets/PDF'),
+    path.resolve(process.cwd(), '../frontend/public/documents'),
+    path.resolve(process.cwd(), '../frontend/public/PDF'),
+    path.resolve(process.cwd(), '../frontend/public/assets/PDF'),
+    path.resolve(process.cwd(), 'uploads'),
+  ];
+  for (const dir of candidateDirs) {
+    const full = path.join(dir, safe);
+    if (fs.existsSync(full)) {
+      return full;
+    }
   }
-  return full;
+  return path.join(uploadsDir, safe);
+}
+
+/** Robust document finder supporting doc-id, clean slug, article slug, or filename. */
+async function findDocumentByKey(key: string): Promise<Document | null> {
+  if (!key || key === 'undefined' || key === 'doc-undefined') return null;
+  // 1. Direct ID match
+  let doc = await prisma.document.findUnique({ where: { id: key } });
+  if (doc) return doc;
+
+  // 2. ID match with or without doc- prefix, or filename match
+  const altId = key.startsWith('doc-') ? key.replace(/^doc-/, '') : `doc-${key}`;
+  doc = await prisma.document.findFirst({
+    where: {
+      OR: [
+        { id: altId },
+        { fileName: key },
+        { fileName: { contains: key } },
+      ],
+    },
+  });
+  if (doc) return doc;
+
+  // 3. Match against Article slug or ID
+  const cleanSlug = key.replace(/^doc-/, '');
+  const article = await prisma.article.findFirst({
+    where: {
+      OR: [
+        { slug: key },
+        { slug: cleanSlug },
+        { id: key },
+      ],
+    },
+  });
+  if (article && article.pdfFileName) {
+    doc = await prisma.document.findFirst({
+      where: {
+        OR: [
+          { fileName: article.pdfFileName },
+          { id: `doc-${article.slug}` },
+          { id: `doc-${cleanSlug}` },
+        ],
+      },
+    });
+    if (doc) return doc;
+  }
+
+  // 4. Substring search across all documents
+  const lower = cleanSlug.toLowerCase();
+  const allDocs = await prisma.document.findMany();
+  for (const d of allDocs) {
+    if (d.id.toLowerCase().includes(lower) || d.fileName.toLowerCase().includes(lower) || d.title.toLowerCase().includes(lower)) {
+      return d;
+    }
+  }
+
+  return null;
 }
 
 const upload = multer({
@@ -110,7 +177,7 @@ documentsRouter.get(
   '/:id',
   requireAuth,
   asyncHandler(async (req, res) => {
-    const doc = await prisma.document.findUnique({ where: { id: req.params.id } });
+    const doc = await findDocumentByKey(req.params.id);
     if (!doc) throw notFound('Document');
     ok(res, { document: serializeDocument(doc) });
   }),
@@ -120,7 +187,7 @@ documentsRouter.get(
   '/:id/file',
   requireAuth,
   asyncHandler(async (req, res) => {
-    const doc = await prisma.document.findUnique({ where: { id: req.params.id } });
+    const doc = await findDocumentByKey(req.params.id);
     if (!doc) throw notFound('Document');
     // Server-side authorization for file streaming. Documents uploaded by
     // an admin are shared clinical resources: any authenticated doctor may

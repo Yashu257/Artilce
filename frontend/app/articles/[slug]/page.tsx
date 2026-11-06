@@ -106,7 +106,10 @@ export default function ArticleDetailPage() {
     );
   }
 
-  const docId = article.documentId || `doc-${article.slug}`;
+  const docId =
+    article.documentId ||
+    (article.slug ? (article.slug.startsWith("doc-") ? article.slug : `doc-${article.slug}`) : "") ||
+    (slug ? (slug.startsWith("doc-") ? slug : `doc-${slug}`) : "doc-launch-deck-early-initiation-better");
   const pdfViewerUrl = `/documents/${docId}?page=1`;
 
   // Generate 4 slide image paths for this publication
