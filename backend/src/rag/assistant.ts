@@ -13,6 +13,7 @@ import {
   INSUFFICIENT_INFORMATION,
   MEDICAL_DISCLAIMER,
   SYSTEM_PROMPT,
+  GENERAL_SYSTEM_PROMPT,
   buildGroundedPrompt,
   cleanExcerptText,
 } from './prompts';
@@ -29,7 +30,7 @@ export interface AssistantAnswer extends ChatResult {
 }
 
 const OPENAI_CHAT_MODEL = 'gpt-4o-mini';
-const GEMINI_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-3.1-flash-lite'];
+const GEMINI_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-flash-latest'];
 
 function withDisclaimer(body: string): string {
   return `${body.trim()}\n\n${MEDICAL_DISCLAIMER}`;
@@ -395,6 +396,54 @@ async function generateWithLlm(
   return null;
 }
 
+async function generateGeneralWithLlm(
+  question: string,
+): Promise<{ text: string; mode: string } | null> {
+  const provider = getEmbeddingProvider();
+
+  if (provider === 'openai' && process.env.OPENAI_API_KEY) {
+    const { default: OpenAI } = await import('openai');
+    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const res = await client.chat.completions.create({
+      model: OPENAI_CHAT_MODEL,
+      temperature: 0.3,
+      messages: [
+        { role: 'system', content: GENERAL_SYSTEM_PROMPT },
+        { role: 'user', content: question },
+      ],
+    });
+    return { text: res.choices[0]?.message?.content?.trim() ?? '', mode: 'llm-openai' };
+  }
+
+  if (process.env.GEMINI_API_KEY) {
+    try {
+      const { GoogleGenerativeAI } = await import('@google/generative-ai');
+      const client = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string);
+      for (const m of GEMINI_MODELS) {
+        try {
+          const model = client.getGenerativeModel({
+            model: m,
+            systemInstruction: GENERAL_SYSTEM_PROMPT,
+          });
+          const res = await model.generateContent({
+            contents: [{ role: 'user', parts: [{ text: question }] }],
+          });
+          const text = res.response.text().trim();
+          if (text) {
+            return { text, mode: `llm-gemini-${m}` };
+          }
+        } catch (mErr) {
+          logger.warn(`[assistant] Gemini general generation on ${m} failed, trying next`, { error: String(mErr) });
+        }
+      }
+    } catch (err) {
+      logger.warn('[assistant] Gemini general initialization failed', { error: String(err) });
+    }
+  }
+
+  return null;
+}
+
 async function persistConversation(
   userId: string,
   conversationId: string | undefined,
@@ -474,26 +523,25 @@ export async function answerQuestion(
     };
   }
 
-  // 3. Handle Out-of-Scope / Non-Medical Queries (e.g. 2+2, jokes, weather, etc.)
-  if (isOutOfScope(cleanQuestion)) {
-    const denial = buildOutOfScopeResponse();
-    const convId = await persistConversation(userId, conversationId, cleanQuestion, denial, []);
-    return {
-      answer: denial,
-      citations: [],
-      conversationId: convId,
-      mode: 'local-retrieval',
-      engine: 'out-of-scope-denial',
-      provider: 'medknow',
-    };
-  }
-
   const { chunks, provider } = await retrieve(cleanQuestion, 6);
 
+  // If no document chunks match (or general query), answer via general LLM!
   if (chunks.length === 0) {
-    const answer = withDisclaimer(INSUFFICIENT_INFORMATION);
+    const general = await generateGeneralWithLlm(cleanQuestion);
+    let answer: string;
+    let mode: AssistantMode;
+    let engine: string;
+    if (general && general.text) {
+      answer = general.text;
+      mode = 'llm';
+      engine = general.mode;
+    } else {
+      answer = `I am **MedKnow**, your Cipla AI Assistant. How can I help you today? Please feel free to ask any medical, clinical, or general inquiry.`;
+      mode = 'local-retrieval';
+      engine = 'fallback-general';
+    }
     const convId = await persistConversation(userId, conversationId, cleanQuestion, answer, []);
-    return { answer, citations: [], conversationId: convId, mode: 'local-retrieval', engine: 'insufficient', provider };
+    return { answer, citations: [], conversationId: convId, mode, engine, provider };
   }
 
   // Deduplicate chunks from the same document & page
@@ -566,6 +614,61 @@ async function generateWithLlmStream(
   if (nonStream && nonStream.text) {
     const words = nonStream.text.split(' ');
     for (const w of words) {
+      onToken(wordClean(w) + ' ');
+      await new Promise((r) => setTimeout(r, 20));
+    }
+    return nonStream;
+  }
+
+  return null;
+}
+
+function wordClean(w: string): string {
+  return w;
+}
+
+async function generateGeneralWithLlmStream(
+  question: string,
+  onToken: (token: string) => void,
+): Promise<{ text: string; mode: string } | null> {
+  if (process.env.GEMINI_API_KEY) {
+    try {
+      const { GoogleGenerativeAI } = await import('@google/generative-ai');
+      const client = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string);
+      for (const m of GEMINI_MODELS) {
+        try {
+          const model = client.getGenerativeModel({
+            model: m,
+            systemInstruction: GENERAL_SYSTEM_PROMPT,
+          });
+          const responseStream = await model.generateContentStream({
+            contents: [{ role: 'user', parts: [{ text: question }] }],
+          });
+          let fullText = '';
+          for await (const chunk of responseStream.stream) {
+            const chunkText = chunk.text();
+            if (chunkText) {
+              fullText += chunkText;
+              onToken(chunkText);
+            }
+          }
+          if (fullText.trim()) {
+            return { text: fullText.trim(), mode: `llm-gemini-${m}` };
+          }
+        } catch (mErr) {
+          logger.warn(`[assistant] Gemini general stream on ${m} failed, trying next`, { error: String(mErr) });
+        }
+      }
+    } catch (err) {
+      logger.warn('[assistant] Gemini general initialization failed', { error: String(err) });
+    }
+  }
+
+  // Fallback to non-streaming generateGeneralWithLlm
+  const nonStream = await generateGeneralWithLlm(question);
+  if (nonStream && nonStream.text) {
+    const words = nonStream.text.split(' ');
+    for (const w of words) {
       onToken(w + ' ');
       await new Promise((r) => setTimeout(r, 20));
     }
@@ -631,35 +734,29 @@ export async function answerQuestionStream(
     };
   }
 
-  // 3. Handle Out-of-Scope / Non-Medical Queries (e.g. 2+2, jokes, etc.)
-  if (isOutOfScope(cleanQuestion)) {
-    const denial = buildOutOfScopeResponse();
-    const words = denial.split(' ');
-    for (const word of words) {
-      onToken(word + ' ');
-      await new Promise((r) => setTimeout(r, 20));
-    }
-    const convId = await persistConversation(userId, conversationId, cleanQuestion, denial, []);
-    return {
-      answer: denial,
-      citations: [],
-      conversationId: convId,
-      mode: 'local-retrieval',
-      engine: 'out-of-scope-denial',
-      provider: 'medknow',
-    };
-  }
-
   const { chunks, provider } = await retrieve(cleanQuestion, 6);
 
+  // If no document chunks match (or general query), answer via general LLM stream!
   if (chunks.length === 0) {
-    const answer = withDisclaimer(INSUFFICIENT_INFORMATION);
-    for (const word of answer.split(' ')) {
-      onToken(word + ' ');
-      await new Promise((r) => setTimeout(r, 25));
+    const streamed = await generateGeneralWithLlmStream(cleanQuestion, onToken);
+    let answer: string;
+    let mode: AssistantMode;
+    let engine: string;
+    if (streamed && streamed.text) {
+      answer = streamed.text;
+      mode = 'llm';
+      engine = streamed.mode;
+    } else {
+      answer = `I am **MedKnow**, your Cipla AI Assistant. How can I help you today? Please feel free to ask any medical, clinical, or general inquiry.`;
+      mode = 'local-retrieval';
+      engine = 'fallback-general';
+      for (const word of answer.split(' ')) {
+        onToken(word + ' ');
+        await new Promise((r) => setTimeout(r, 20));
+      }
     }
     const convId = await persistConversation(userId, conversationId, cleanQuestion, answer, []);
-    return { answer, citations: [], conversationId: convId, mode: 'local-retrieval', engine: 'insufficient', provider };
+    return { answer, citations: [], conversationId: convId, mode, engine, provider };
   }
 
   const dedupedChunks = deduplicateChunks(chunks);
