@@ -39,6 +39,12 @@ export function parseArticleContent(article: Article): ArticleContent {
   }
 }
 
+function getDocIdForArticle(slug: string): string {
+  if (slug === 'launch-deck-phase-iii-lte-safety-study') return 'doc-launch-deck-phase-iii-lte';
+  if (slug === 'launch-deck-rwe-german-comparative-kork-study') return 'doc-launch-deck-rwe-german-comparative';
+  return `doc-${slug}`;
+}
+
 export function serializeArticle(article: Article, bookmarked = false) {
   const content = parseArticleContent(article);
   return {
@@ -52,6 +58,7 @@ export function serializeArticle(article: Article, bookmarked = false) {
     readingTime: content.readingTime ?? null,
     pdfFileName: article.pdfFileName ?? content.pdfFileName ?? null,
     pdfPages: article.pdfPages ?? content.pdfPages ?? null,
+    documentId: getDocIdForArticle(article.slug),
     thumbnailUrl: article.thumbnailUrl ?? content.thumbnailUrl ?? null,
     slideImages: content.slideImages ?? [],
     sections: content.sections ?? [],

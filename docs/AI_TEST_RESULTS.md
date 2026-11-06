@@ -1,6 +1,6 @@
 # AI Assistant Test Results — Cipla MedKnowledge
 
-Generated: 2026-11-05T21:28:22.678Z
+Generated: 2026-11-06T05:53:31.877Z
 
 ## How this was tested
 
@@ -18,19 +18,19 @@ Generated: 2026-11-05T21:28:22.678Z
 
 **Question:** What clinical evidence is available for early initiation?
 
-**Mode:** `llm` (engine: `gemini-gemini-3.5-flash`, embedding provider: `local-tfidf`)
+**Mode:** `llm` (engine: `llm-gemini-gemini-3.5-flash-lite`, embedding provider: `local-tfidf`)
 
 **Answer:**
 
-> Based on the provided excerpts, clinical evidence for early initiation comes from an observational cohort study evaluating cenobamate (CNB) as an early adjunctive treatment in drug-resistant focal-onset seizures [2], [6]. 
+> Cenobamate utilized in early therapy lines demonstrates superior retention rates, seizure freedom, and response rates compared to other antiseizure medications (ASMs) such as lacosamide, levetiracetam, valproate, and topiramate [6]. 
 > 
-> Key clinical findings include:
+> ### Key Clinical Findings
+> * **Retention and Efficacy:** When used in early therapy lines for refractory focal onset seizures, cenobamate showed the highest retention rate, as well as the best seizure freedom and response rates relative to comparator ASMs [6].
+> * **Therapy Line Positioning:** Although cenobamate is approved for refractory focal onset seizures and is typically considered by clinicians in later therapy lines, emerging data evaluates its use in earlier therapy lines [6].
 > 
-> * **Retention Rate:** In early therapy lines, cenobamate demonstrated the highest retention rate compared with lacosamide, levetiracetam, valproate, and topiramate [6].
-> * **Efficacy (Seizure Freedom and Response Rates):** Seizure freedom and response rates were best on cenobamate compared to the other evaluated antiseizure medications (ASMs) in early therapy lines [6].
-> * **Therapy Placement:** Although cenobamate is usually considered by clinicians in later therapy lines for refractory focal-onset seizures, this study provides initial evidence supporting its use in earlier therapy lines [6].
-> 
-> *Note: Specific numbers, statistical values, and patient group sizes for these early-line comparisons were not detailed in the provided excerpts.*
+> ### Clinical Considerations
+> * **Concomitant ASM Management:** Evidence from clinical trials and real-world studies indicates that adverse impacts from cenobamate combination therapy can often be managed by decreasing the dose or completely discontinuing concomitant ASMs, which also serves to reduce adverse events [3]. However, failure to proactively reduce baseline ASMs under certain clinical conditions may in some instances impact discontinuation rates [1].
+> * **Adverse Events:** Laboratory disturbances such as mild liver enzyme elevations (normalizing after concomitant valproic acid reduction) and hyponatremia (resolving after discontinuing concomitant eslicarbazepine acetate) have been documented [5]. Discontinuations of cenobamate are most frequently driven by a lack of efficacy, though some reports note more discontinuations due to adverse events [1].
 > 
 > This is for medical information support only and is not a substitute for professional medical judgment.
 
@@ -55,26 +55,24 @@ Generated: 2026-11-05T21:28:22.678Z
   Excerpt: "734 Y. Winter et al. Key Points Cenobamate is approved to treat refractory focal onset seizures and is usually considered by clinicians in the later therapy lines. We provide the first data on the use of cenobamate in early therapy lines to treat refractory focal onset seizures. In early therapy lines, cenobamate had the highest retention rate compared with lacosamide, levetiracetam, valproate, and topiramate. Seizure freedom and response rate were also the best on cenobamate. No significant dif…"
   Check: Excerpt found verbatim (first 120 chars) on p. 2 of LAUNCH DECK - RWE COMPARATIVE vs OTHER ASMs.pdf.
 
-**Notes:** Mode: llm (engine: gemini-gemini-3.5-flash, embedding provider: local-tfidf).
+**Notes:** Mode: llm (engine: llm-gemini-gemini-3.5-flash-lite, embedding provider: local-tfidf).
 
 ## Q2 — PASS (grounded)
 
 **Question:** What is the evidence for cenobamate efficacy during the titration phase?
 
-**Mode:** `local-retrieval` (engine: `extractive`, embedding provider: `local-tfidf`)
+**Mode:** `llm` (engine: `llm-gemini-gemini-3.5-flash-lite`, embedding provider: `local-tfidf`)
 
 **Answer:**
 
-> Local retrieval mode — evidence retrieved from PDFs, answer composed from retrieved excerpts, no external LLM.
+> Signs of efficacy with cenobamate may occur early during the titration period, though patients often need to reach doses of 200–300 mg/day—or as high as 400 mg/day—to achieve an optimal clinical response [6]. 
 > 
-> Based on the available Cipla medical resources, the following is relevant to "What is the evidence for cenobamate efficacy during the titration phase?":
+> ### Key Clinical Findings
+> * **Early Onset:** Clinical literature indicates that signs of efficacy can be observed during the cenobamate titration phase [6].
+> * **Dose Escalation Requirements:** While early responses occur, reaching higher maintenance doses (200–300 mg/day or up to 400 mg/day) is frequently necessary for optimal seizure reduction [6].
 > 
-> - A phase I clinical study evaluating the effects of cenobamate on the QT interval. [1] (Launch Deck: RWE German Comparative — The Cenobamate KORK Study (Comparison vs Other ASMs), p. 13, Introduction)
-> - Randomized phase 2 study of adjunctive cenobamate in patients with uncontrolled focal sei - zures. [2] (Launch Deck: Efficacy in Titration Phase — Onset of Efficacy and Adverse Events, p. 11, Introduction)
-> - 5 Patients were randomized to either 200 mg/day cenobamate or placebo after an 8- week baseline assessment. [3] (Launch Deck: Efficacy in Titration Phase — Onset of Efficacy and Adverse Events, p. 2, Introduction)
-> - Similar to other studies in patients with uncontrolled ep- ilepsy, the use of concomitant ASMs may have confounded the reporting of AEs with cenobamate. [4] (Launch Deck: Phase III LTE Safety Study — Large Multicenter Open-Label Trial (Zero DRESS Cases), p. 9, Introduction)
-> - Positive allosteric modulation of GABA(a) receptors by a novel antiepileptic drug cenobamate. [5] (Spanish Consensus: Reduce 1 ASM — Management of Concomitant ASMs When Using Cenobamate, p. 8, Introduction)
-> - Although signs of efficacy may occur early in titration, patients may need to reach doses of 200– 300 mg/day, or as high as 400 mg/ day, to achieve optimal response. [6] (Launch Deck: Phase III LTE Post-Hoc Analysis — Long-Term Efficacy for Uncontrolled Focal Seizures, p. 9, Introduction)
+> ### Clinical Considerations
+> * The available reference excerpts mention studies evaluating the onset of efficacy and adverse events during the titration period [1, 2], as well as randomized trials assessing adjunctive cenobamate (such as 200 mg/day) in adults with uncontrolled focal seizures taking 1–3 antiseizure medications (ASMs) [3]. However, specific quantitative efficacy metrics (such as exact seizure-reduction percentages or responder rates) exclusively isolated to the titration phase are not detailed in the provided excerpts.
 > 
 > This is for medical information support only and is not a substitute for professional medical judgment.
 
@@ -99,29 +97,26 @@ Generated: 2026-11-05T21:28:22.678Z
   Excerpt: "line seizure frequency is ongoing. Although signs of efficacy may occur early in titration, patients may need to reach doses of 200– 300 mg/day, or as high as 400 mg/ day, to achieve optimal response. 5 | CONCLUSIONS High rates of retention and sustained reduction in sei- zure frequency were observed in this post hoc analysis of a subset of patients from the open- label Phase 3 study of cenobamate, extending the findings from the Phase 2 studies, with a significant proportion of patients experi-…"
   Check: Excerpt found verbatim (first 120 chars) on p. 9 of LAUNCH DECK - PHASE III LTE POST-HOC.pdf.
 
-**Notes:** Mode: local-retrieval (engine: extractive, embedding provider: local-tfidf).
+**Notes:** Mode: llm (engine: llm-gemini-gemini-3.5-flash-lite, embedding provider: local-tfidf).
 
 ## Q3 — PASS (grounded)
 
 **Question:** When can cenobamate be used as monotherapy, and how is conversion to monotherapy handled?
 
-**Mode:** `llm` (engine: `gemini-gemini-3.5-flash`, embedding provider: `local-tfidf`)
+**Mode:** `llm` (engine: `llm-gemini-gemini-3.5-flash-lite`, embedding provider: `local-tfidf`)
 
 **Answer:**
 
-> Based on the provided excerpts, specific clinical protocols or step-by-step guidelines detailing **how** conversion to cenobamate monotherapy is managed are not provided. However, the excerpts contain the following information regarding its use and study context:
+> Cenobamate can be used as subsequent monotherapy (or dual therapy) for at least three consecutive months in patients with refractory seizures or focal drug-resistant epilepsy (DRE) in real-world clinical practice [2, 6]. 
 > 
-> ### Indications and Context of Monotherapy Use
-> * **Patient Population:** In real-world clinical practice studies, cenobamate has been evaluated as subsequent monotherapy or dual therapy in adult patients with drug-resistant epilepsy (DRE) / drug-resistant focal seizures [1], [2], [3], [5].
-> * **Real-World Experience:** Studies assessed outcomes in patients with focal DRE who converted to monotherapy or dual therapy for at least three consecutive months [1], [6].
+> ### Key Clinical Findings
+> * **Seizure Freedom:** Studies evaluating cenobamate used as subsequent monotherapy or dual therapy observed a seizure-freedom rate of 31.5% [6].
+> * **Seizure Frequency Reductions:** Further efficacy data reported across patient cohorts show ≥90% seizure reduction in up to 49.2% to 58.6% of patients, and ≥50% seizure reduction in 75.8% to 82.8% of patients [4].
+> * **Concomitant Medication Reduction:** The mean number of concomitant antiseizure medications (coASMs) decreased from a baseline of 1.98 down to 0.78 following cenobamate treatment in evaluated subsets [4].
 > 
-> ### Handling Conversion to Monotherapy
-> * The provided text mentions that expert consensus recommendations exist regarding the management and dose adjustment of concomitant antiseizure medications (coASMs) when using cenobamate in adults with drug-resistant focal seizures [5]. 
-> * In real-world study data, treatment with cenobamate allowed for a reduction in the mean number of coASMs (e.g., reduced from a baseline average of 1.98 coASMs down to 0.78) [4].
-> * Specific conversion protocols, titration schedules, or reduction timelines for individual coASMs are **not detailed in the available excerpts**.
-> 
-> ---
-> *General Information Note:* In general clinical practice, conversion to monotherapy typically involves gradually titrating the primary ASM while systematically tapering concomitant ASMs based on patient response, tolerability, and expert consensus guidelines; specific management decisions should always align with local regulatory approvals and full prescribing information.
+> ### Clinical Considerations & Limitations
+> * **Monotherapy Conversion Protocols:** While the available evidence confirms that cenobamate is utilized successfully as subsequent monotherapy in clinical practice [6], the provided excerpts **do not** contain specific step-by-step protocol instructions on *how* the conversion to monotherapy is handled or titrated. 
+> * **Expert Guidance:** Expert consensus recommendations regarding the dose adjustment of concomitant antiseizure medications during cenobamate treatment are referenced in the literature [5], but the exact procedural steps for conversion are not detailed in the supplied text.
 > 
 > This is for medical information support only and is not a substitute for professional medical judgment.
 
@@ -146,19 +141,24 @@ Generated: 2026-11-05T21:28:22.678Z
   Excerpt: "| 779 BENAVENTE 1234. adds to the growing body of evidence supporting posi- tive outcomes with cenobamate in patients with refrac- tory seizures, both in clinical trial 8,12,13 and real- world settings. 16,17,23–25 In our study, we observed a high rate of seizure free - dom (31.5%) with cenobamate, considerably higher than in several other real- world studies ( Table 4 ), even though cenobamate was being used as subsequent monotherapy or dual therapy for at least three consecutive months. 17,23,…"
   Check: Excerpt found verbatim (first 120 chars) on p. 5 of LAUNCH DECK - EVENTUALLY MONOTHERAPY.pdf.
 
-**Notes:** Mode: llm (engine: gemini-gemini-3.5-flash, embedding provider: local-tfidf).
+**Notes:** Mode: llm (engine: llm-gemini-gemini-3.5-flash-lite, embedding provider: local-tfidf).
 
 ## Q4 — PASS (grounded)
 
 **Question:** What did the Phase III long-term extension safety study find?
 
-**Mode:** `llm` (engine: `gemini-gemini-3.5-flash`, embedding provider: `local-tfidf`)
+**Mode:** `llm` (engine: `llm-gemini-gemini-3.5-flash-lite`, embedding provider: `local-tfidf`)
 
 **Answer:**
 
-> Based on the provided excerpts, the specific findings, numerical results, or detailed outcomes of the Phase III long-term extension safety study are not stated in the available text. 
+> The available document excerpts reference a large, phase 3, multicenter, open-label safety study of cenobamate (YKP3089) as an adjunctive treatment for uncontrolled focal seizures [1], as well as a phase III long-term extension safety study noting zero DRESS cases [4], but specific findings regarding the long-term extension safety results are not detailed within the provided text excerpts.
 > 
-> The excerpts only list citations referencing a large, phase 3, multicenter, open-label safety study of cenobamate as adjunctive treatment for uncontrolled focal seizures [1] and its long-term safety [2], but they do not contain the specific safety or efficacy results of the study.
+> ### Key Clinical Findings
+> - The available references cite a large, multicenter, open-label safety study evaluating cenobamate as an adjunctive treatment for uncontrolled focal seizures [1].
+> - Source material titles reference a phase III long-term extension safety study characterized by zero DRESS cases [4], though detailed numerical results or specific safety data endpoints are not provided in the text. 
+> 
+> ### Clinical Considerations
+> - Detailed clinical metrics such as retention rates, specific adverse event frequencies, and titration protocols for the long-term extension safety study are not documented in the available resources.
 > 
 > This is for medical information support only and is not a substitute for professional medical judgment.
 
@@ -168,10 +168,9 @@ Generated: 2026-11-05T21:28:22.678Z
   Excerpt: "| 3015 SPERLING 1 23. double- blind, randomised, placebo- controlled, dose- response trial. Lancet Neurol. 2020;19(1):38– 48. 11. Mohanraj R, Brodie MJ. Measuring the efficacy of antiepileptic drugs. Seizure. 2003;12(7):413– 43. 12. Sperling MR, Klein P, Aboumatar S, Gelfand M, Halford JJ, Krauss GL, et al. Cenobamate (YKP3089) as adjunctive treat - ment for uncontrolled focal seizures in a large, phase 3, multi- center, open- label safety study. Epilepsia. 2020;61(6):1099– 108. 13. Scheffer IE,…"
   Check: Excerpt found verbatim (first 120 chars) on p. 11 of LAUNCH DECK - PHASE III LTE POST-HOC.pdf.
 - [VERIFIED] Launch Deck: RWE Comparative vs Other ASMs — Early Adjunctive Treatment in Drug-Resistant Focal Seizures, p. 9 (Introduction), relevance 0.441
-  Excerpt: "741 Cenobamate for Epilepsy in Early Therapy Lines voltage-gated sodium channels in rat hippocampal CA3 neurons. Eur J Pharmacol. 2019;15(855):175–82. 5. Perucca E, Bialer M, White HS. New GABA-targeting therapies for the treatment of seizures and epilepsy: I. role of GABA as a modulator of seizure activity and recently approved medications acting on the GABA system. CNS Drugs. 2023;37(9):755–79. 6. French JA, Chung SS, Krauss GL, Lee SK, Maciejowski M, Rosenfeld WE, et al. Long-term safety of a…"
-  Check: Excerpt found verbatim (first 120 chars) on p. 9 of LAUNCH DECK - RWE COMPARATIVE vs OTHER ASMs.pdf.
-- [VERIFIED] Launch Deck: RWE Comparative vs Other ASMs — Early Adjunctive Treatment in Drug-Resistant Focal Seizures, p. 9 (Introduction), relevance 0.398
-  Excerpt: "ht S, Lendemans D, Kock - elmann E. Effectiveness of eslicarbazepine acetate in depend - ency of baseline anticonvulsant therapy: results from a German prospective multicenter clinical practice study. Epilepsy Behav. 2019;101(Pt A): 106574. 17. Privitera M, Richy FF, Schabert VF. Indirect treatment compari- son of cenobamate to other ASMs for the treatment of uncon- trolled focal seizures. Epilepsy Behav. 2022;126: 108429. 18. Sander JW, Rosenfeld WE, Halford JJ, Steinhoff BJ, Biton V, Toledo M.…"
+  Excerpt: "741 Cenobamate for Epilepsy in Early Therapy Lines voltage-gated sodium channels in rat hippocampal CA3 neurons. Eur J Pharmacol. 2019;15(855):175–82. 5. Perucca E, Bialer M, White HS. New GABA-targeting therapies for the treatment of seizures and epilepsy: I. role of GABA as a modulator of seizure activity and recently approved medications acting on the GABA system. CNS Drugs. 2023;37(9):755–79. 6. French JA, Chung SS, Krauss GL, Lee SK, Maciejowski M, Rosenfeld WE, et al. Long-term safety of a…
+
+ht S, Lendemans D, Kock - elmann E. Effectiveness of eslicarbazepine acetate in depend - ency of baseline anticonvulsant therapy: results from a German prospective multicenter clinical practice study. Epilepsy Behav. 2019;101(Pt A): 106574. 17. Privitera M, Richy FF, Schabert VF. Indirect treatment compari- son of cenobamate to other ASMs for the treatment of uncon- trolled focal seizures. Epilepsy Behav. 2022;126: 108429. 18. Sander JW, Rosenfeld WE, Halford JJ, Steinhoff BJ, Biton V, Toledo M.…"
   Check: Excerpt found verbatim (first 120 chars) on p. 9 of LAUNCH DECK - RWE COMPARATIVE vs OTHER ASMs.pdf.
 - [VERIFIED] Launch Deck: Ultra-Refractory FOS — Danish Epilepsy Centre Results (Add-On in Extreme Refractoriness), p. 2 (Introduction), relevance 0.36
   Excerpt: "3876 Neurological Sciences (2025) 46:3875–3884 stimulator (VNS)) failed to achieve seizure control [ 5 ]. Thus, ultra-refractory epilepsy defines a group of severe epilepsies with minimal chances of attaining seizure freedom. Cenobamate (CNB) is the most recent ASM made avail- able for the add-on treatment of drug-resistant focal epilep- sies. It is characterized by a unique dual-action mechanism, that includes the blockade of persistent sodium currents and positively modulates GABA A receptors…"
@@ -183,17 +182,17 @@ Generated: 2026-11-05T21:28:22.678Z
   Excerpt: "2188 | 2177RESA2RCH TILF outcomes: a national, community- based survey. Epilepsia. 2017;58(5):764–71. 4. Chen Z, Brodie MJ, Liew D, Kwan P. Treatment outcomes in pa- tients with newly diagnosed epilepsy treated with established and new antiepileptic drugs: a 30- year longitudinal cohort study. JAMA Neurol. 2018;75(3):279–86. 5. Toledano R, Villanueva V, Toledo M, Sabaniego J, Pérez- Domper P. Clinical and economic implications of epilepsy management across treatment lines in Spain: a real- life…"
   Check: Excerpt found verbatim (first 120 chars) on p. 12 of LAUNCH DECK - EARLY INITIATION BETTER.pdf.
 
-**Notes:** Mode: llm (engine: gemini-gemini-3.5-flash, embedding provider: local-tfidf).
+**Notes:** Mode: llm (engine: llm-gemini-gemini-3.5-flash-lite, embedding provider: local-tfidf).
 
 ## Q5 — PASS (grounded)
 
 **Question:** What were the results of the Phase III LTE post-hoc analysis for uncontrolled focal seizures?
 
-**Mode:** `llm` (engine: `gemini-gemini-3.5-flash`, embedding provider: `local-tfidf`)
+**Mode:** `llm` (engine: `llm-gemini-gemini-3.5-flash-lite`, embedding provider: `local-tfidf`)
 
 **Answer:**
 
-> Based on the provided source excerpts, the specific results of the Phase III long-term extension (LTE) post-hoc analysis for uncontrolled focal seizures are not stated. The retrieved excerpts contain only reference and citation listings (e.g., citing Sperling et al., 2020) [1] rather than efficacy data, outcomes, or statistical results.
+> Based on the provided medical document evidence, the specific results of the Phase III LTE (long-term extension) post-hoc analysis for uncontrolled focal seizures are not documented in the available resources. The provided excerpts only reference baseline and introductory literature citations regarding cenobamate open-label safety studies and randomized trials [1, 5], but do not contain the text or data tables detailing the post-ico analysis results.
 > 
 > This is for medical information support only and is not a substitute for professional medical judgment.
 
@@ -218,25 +217,27 @@ Generated: 2026-11-05T21:28:22.678Z
   Excerpt: "1058 | CARREÑO 1234. gov/ drugs atfda_ docs/ label/ 2019/ 21283 9s000 lbl. pdf Accessed 6 Jul 2023 7. Angelini Pharma S.p.A. Ontozry® tablets. Summary of product characteristics. 2021. https:// www. ema. europa. eu/ en/ docum ents/ produ ct- infor mation/ ontoz ry- epar- produ ct- infor mation_ en. pdf Accessed 6 Jul 2023 8. Sharma R, Nakamura M, Neupane C, Jeon BH, Shin H, Melnick SM, et al. Positive allosteric modulation of GABA(a) receptors by a novel antiepileptic drug cenobamate. Eur J Phar…"
   Check: Excerpt found verbatim (first 120 chars) on p. 8 of REDUCE 1 ASM SPANISH CONSENSUS.pdf.
 
-**Notes:** Mode: llm (engine: gemini-gemini-3.5-flash, embedding provider: local-tfidf).
+**Notes:** Mode: llm (engine: llm-gemini-gemini-3.5-flash-lite, embedding provider: local-tfidf).
 
 ## Q6 — PASS (grounded)
 
 **Question:** What did the German KORK study find when comparing cenobamate with other ASMs?
 
-**Mode:** `llm` (engine: `gemini-gemini-3.5-flash`, embedding provider: `local-tfidf`)
+**Mode:** `llm` (engine: `llm-gemini-gemini-3.5-flash-lite`, embedding provider: `local-tfidf`)
 
 **Answer:**
 
-> Based on the provided excerpts, the **German KORK study** is a prospective monocenter observational study conducted at the Kork Epilepsy Center in Germany that evaluated cenobamate (CNB) as an adjunctive therapy in refractory epilepsy, comparing it with historical cohorts treated with add-on lacosamide (LCM), perampanel (PER), and brivaracetam (BRV) [2, 5].
+> The German KORK study investigated cenobamate as an adjunctive therapy in refractory epilepsy, comparing outcomes with historical cohorts treated with add-on lacosamide (LCM), perampanel (PER), and brivaracetam (BRV) [5]. 
 > 
-> Regarding the specific findings in comparison to other ASMs, the provided excerpts state the following:
+> ### Key Clinical Findings
+> * **Comparative Context:** The study evaluated cenobamate's role as an adjunctive treatment in drug-resistant focal seizures [1], [5]. 
+> * **Broader Trial Insights:** A meta-analysis of pivotal trials involving recently introduced antiseizure medications (ASMs) highlighted the efficacy of cenobamate, while noting methodological challenges when comparing multicenter trials across diverse populations and study sites [1]. 
 > 
-> * **Efficacy and Tolerability:** High efficacy makes CNB an "almost perfect monotherapy ASM," and its efficacy would expectedly improve under monotherapy conditions due to its superior tolerability [1]. 
-> * **Overall Clinical View:** Real-world studies and open-label extension data supported commentaries claiming CNB could be a "revolutionary drug" in the field [2]. 
-> * **Trial Meta-Analysis Context:** When evaluating experiences with add-on LCM, PER, and BRV, a meta-analysis of pivotal trials involving recently introduced ASMs highlighted the efficacy of CNB [1].
+> ### Clinical Considerations
+> * **Study Design:** Conducted at the Kork Epilepsy Center (a leading tertiary referral center in Germany), the trial was designed as a prospective monocenter observational study [2], [5]. 
+> * **Perspectives on Monotherapy:** Clinical experiences and literature suggest that cenobamate's high efficacy and risk of interactions make it a strong candidate for monotherapy, where its efficacy would likely improve further due to superior tolerability [1]. 
 > 
-> *Note: The provided excerpts do not contain the specific numerical findings, statistical comparative outcomes, responder rates, or retention rates directly comparing cenobamate against lacosamide, perampanel, and brivaracetam in the KORK study cohorts.*
+> *Note: Specific numerical comparative efficacy or retention rates between cenobamate and lacosamide, perampanel, or brivaracetam are not detailed in the provided source excerpts.*
 > 
 > This is for medical information support only and is not a substitute for professional medical judgment.
 
@@ -261,25 +262,24 @@ Generated: 2026-11-05T21:28:22.678Z
   Excerpt: "736 Y. Winter et al. (21.9–23.4%) (Table 2 ). Weight loss (28.1%) was one of the most reported side effects with TPM. Weight gain (27.3%) was only commonly reported under therapy with VPA. Irri- tability was reported in 13.2% of patients on LEV (Table 2 ). There were no serious side effects and none of the patients discontinued adjunctive therapy. 4 Discussion Retention rates are an established compound measurement of tolerability, safety profile, and efficacy that could guide clinical therapy c…"
   Check: Excerpt found verbatim (first 120 chars) on p. 4 of LAUNCH DECK - RWE COMPARATIVE vs OTHER ASMs.pdf.
 
-**Notes:** Mode: llm (engine: gemini-gemini-3.5-flash, embedding provider: local-tfidf).
+**Notes:** Mode: llm (engine: llm-gemini-gemini-3.5-flash-lite, embedding provider: local-tfidf).
 
 ## Q7 — PASS (grounded)
 
 **Question:** What real-world evidence compares cenobamate with other ASMs in drug-resistant focal seizures?
 
-**Mode:** `llm` (engine: `gemini-gemini-3.5-flash`, embedding provider: `local-tfidf`)
+**Mode:** `llm` (engine: `llm-gemini-gemini-3.5-flash-lite`, embedding provider: `local-tfidf`)
 
 **Answer:**
 
-> Based on the provided excerpts, real-world evidence comparing cenobamate (CNB) with other antiseizure medications (ASMs) in drug-resistant focal seizures includes an observational cohort study by Winter et al. (2024) [1, 5]:
+> Real-world evidence evaluating cenobamate in early therapy lines demonstrates that it yields the highest retention rate, seizure freedom, and response rate compared to lacosamide, levetiracetam, valproate, and topiramate [5]. 
 > 
-> * **Study Context:** The study evaluated cenobamate as an early adjunctive treatment in patients with drug-resistant focal-onset seizures (refractory focal-onset seizures) in early therapy lines [1, 5].
-> * **Comparator ASMs:** Cenobamate was compared against **lacosamide, levetiracetam, valproate, and topiramate** [5].
-> * **Comparative Outcomes:**
->   * **Retention Rate:** Cenobamate demonstrated the highest retention rate compared with lacosamide, levetiracetam, valproate, and topiramate in early therapy lines [5].
->   * **Efficacy Outcomes:** Seizure freedom and response rates were also reported to be the best on cenobamate among the compared ASMs [5].
+> ### Key Clinical Findings
+> * **Retention and Efficacy Comparison:** When used in early therapy lines for refractory focal onset seizures, cenobamate demonstrated superior performance regarding retention rate, seizure freedom, and response rates compared to other antiseizure medications (lacosamide, levetiracetam, valproate, and topiramate) [5].
+> * **General Context:** While cenobamate is typically considered by clinicians in later therapy lines for refractory focal onset seizures, real-world data assessing its use in earlier therapy lines supports its positive comparative outcomes [5]. 
 > 
-> *(Note: Additional comparative metrics, specific numbers, or statistical values were not provided in the available excerpts.)*
+> ### Clinical Considerations
+> * Detailed numerical breakdowns, hazard ratios, or specific adverse event profiles comparing cenobamate directly to individual competing ASMs are not documented in the provided source excerpts beyond the stated comparative superiority in retention, seizure freedom, and response rates [5].
 > 
 > This is for medical information support only and is not a substitute for professional medical judgment.
 
@@ -304,30 +304,24 @@ Generated: 2026-11-05T21:28:22.678Z
   Excerpt: "| 779 BENAVENTE 1234. adds to the growing body of evidence supporting posi- tive outcomes with cenobamate in patients with refrac- tory seizures, both in clinical trial 8,12,13 and real- world settings. 16,17,23–25 In our study, we observed a high rate of seizure free - dom (31.5%) with cenobamate, considerably higher than in several other real- world studies ( Table 4 ), even though cenobamate was being used as subsequent monotherapy or dual therapy for at least three consecutive months. 17,23,…"
   Check: Excerpt found verbatim (first 120 chars) on p. 5 of LAUNCH DECK - EVENTUALLY MONOTHERAPY.pdf.
 
-**Notes:** Mode: llm (engine: gemini-gemini-3.5-flash, embedding provider: local-tfidf).
+**Notes:** Mode: llm (engine: llm-gemini-gemini-3.5-flash-lite, embedding provider: local-tfidf).
 
 ## Q8 — PASS (grounded)
 
 **Question:** What evidence supports cenobamate in ultra-refractory focal-onset seizures?
 
-**Mode:** `llm` (engine: `gemini-gemini-3.5-flash`, embedding provider: `local-tfidf`)
+**Mode:** `llm` (engine: `llm-gemini-gemini-3.5-flash-lite`, embedding provider: `local-tfidf`)
 
 **Answer:**
 
-> Based on the provided excerpts, evidence regarding cenobamate (CNB) in ultra-refractory focal-onset seizures is documented in real-world data from The Danish Epilepsy Centre (Dianalund, Denmark) [4, 5]:
+> Cenobamate is evaluated as an add-on treatment in patients with ultra-refractory focal epilepsy based on real-world evidence from the Danish Epilepsy Centre in Dianalund, Denmark [4]. 
 > 
-> ### Real-World Evidence in Ultra-Refractory Focal Epilepsy
-> * **Study Scope:** Cenobamate was evaluated as an add-on treatment specifically in a cohort of patients with ultra-refractory focal epilepsy [4, 5].
-> * **Study Characteristics & Limitations:**
->   * The evaluation was a real-world, non-randomized, and unblinded study [5].
->   * The study included a relatively small sample size focused on ultra-refractory focal epilepsy [5].
->   * Seizure frequency was reported by patients and caregivers in a non-standardized manner, introducing heterogeneity into the evaluation and potentially underestimating actual seizure frequency [5].
->   * Serum concentration measurements of cenobamate were not available in the study data [5].
+> ### Key Clinical Findings
+> * **Study Population:** Real-world data from the Danish Epilepsy Centre specifically evaluated the use of cenobamate as an add-on treatment in patients with ultra-refractory focal epilepsy [4].
+> * **Study Design Limitations:** The treatment evaluation was neither randomized nor blinded, and the study included a relatively small sample size focused specifically on patients with extreme refractoriness [5]. Furthermore, seizure frequency was not reported in a standardized manner by patients and caregivers, which introduced heterogeneity and potential underestimation of seizure frequency, and serum concentration measurements were not utilized [5].
 > 
-> ### General Context on Refractory Focal Seizures
-> * Cenobamate is approved to treat refractory focal-onset seizures and is traditionally considered by clinicians in later therapy lines [3].
-> 
-> *Note: Specific numerical outcomes (such as exact responder rates, percentage seizure reductions, or retention rates) specifically for the ultra-refractory patient cohort at the Danish Epilepsy Centre are not detailed in the provided excerpts [4, 5].*
+> ### Clinical Considerations
+> * The available source excerpts for the Danish Epilepsy Centre study introduce the patient cohort and study limitations regarding ultra-refractory focal-onset seizures [4, 5], but specific quantitative efficacy endpoints, retention rates, or seizure-freedom percentages for this ultra-refractory population are not detailed in the provided text.
 > 
 > This is for medical information support only and is not a substitute for professional medical judgment.
 
@@ -352,29 +346,32 @@ Generated: 2026-11-05T21:28:22.678Z
   Excerpt: "776 | BENAVENTE 1234. 1 | INTRODUCTION Epilepsy is a chronic neurological disease characterized by unprovoked seizures. 1 Patients with persistent seizures have an increased risk of injuries, significant comorbidities, a reduced quality of life, and are at risk of sudden unexpected death in epilepsy (SUDEP). 2–5 Seizure freedom is therefore the key target of epilepsy treatment. To this end, a plethora of antiseizure medications (ASMs) are available with different mechanisms of action, effectiven…"
   Check: Excerpt found verbatim (first 120 chars) on p. 2 of LAUNCH DECK - EVENTUALLY MONOTHERAPY.pdf.
 
-**Notes:** Mode: llm (engine: gemini-gemini-3.5-flash, embedding provider: local-tfidf).
+**Notes:** Mode: llm (engine: llm-gemini-gemini-3.5-flash-lite, embedding provider: local-tfidf).
 
 ## Q9 — PASS (grounded)
 
 **Question:** What does the Spanish consensus recommend about reducing concomitant ASMs when using cenobamate?
 
-**Mode:** `llm` (engine: `gemini-gemini-3.5-flash`, embedding provider: `local-tfidf`)
+**Mode:** `llm` (engine: `llm-gemini-gemini-3.5-flash-lite`, embedding provider: `local-tfidf`)
 
 **Answer:**
 
-> Based on the provided source excerpts, the Spanish consensus recommendations regarding the reduction of concomitant antiseizure medications (ASMs) when using cenobamate include the following:
+> The Spanish consensus suggests that decreasing the dose or completely discontinuing concomitant antiseizure medications (ASMs) can effectively manage adverse impacts in patients receiving cenobamate [2]. Furthermore, patients with drug-resistant epilepsy (DRE) and a high drug load—particularly those receiving first- or second-generation ASMs generally used as second-line options—may benefit from reducing these concomitant medications to optimize the effectiveness and tolerability of cenobamate [1].
 > 
-> * **Managing Adverse Events (AEs):** Decreasing the dose of or completely discontinuing (tapering) concomitant ASMs is an acknowledged method to manage adverse impacts and reduce AEs in patients taking cenobamate [2]. 
-> * **Handling Drug–Drug Interactions:** Adjusting the dose of concomitant ASMs (or cenobamate) may be needed to maintain correct drug exposure, preserve efficacy, and reduce central nervous system AEs—such as significant somnolence associated with clobazam or dizziness associated with sodium channel blockers [4].
-> * **Patient Groups That May Benefit:** Patients with drug-resistant epilepsy (DRE) and a high drug load, as well as those taking first- or second-generation ASMs generally used as second-line options, might benefit from reducing concomitant ASMs to optimize effectiveness and tolerability [5].
-> * **Practice Approach:** The Spanish consensus recommendations are based on expert clinical experience with the Spanish population and are less prescriptive than recommendations in the US, where higher ASM doses are typically used [1].
+> ### Key Clinical Findings
+> * **Management of Adverse Events:** Evidence from clinical trials and real-world studies indicates that tapering or discontinuing concomitant ASMs is an established method for resolving adverse events (AEs) associated with multidrug regimens containing cenobamate [2].
+> * **Target Patient Populations:** Patients with highly active and drug-resistant focal epilepsy who carry a high drug load may benefit from the reduction of concomitant ASMs [1].
+> * **Specific Drug Considerations:** Drug-drug interactions can provoke specific AEs, such as significant somnolence when cenobamate is combined with clobazam, or increased central nervous system AEs like dizziness when combined with sodium channel inhibitors [4]. Consequently, adjustments to either cenobamate or the concomitant ASM may be necessary to maintain correct exposure and efficacy [4].
+> * **Regional Context:** The recommendations reflect the clinical experience of Spanish experts with their local population and are noted to be less prescriptive than US guidelines, where higher ASM doses are typically utilized [1].
 > 
 > This is for medical information support only and is not a substitute for professional medical judgment.
 
 **Retrieved chunks / citations:**
 
 - [VERIFIED] Spanish Consensus: Reduce 1 ASM — Management of Concomitant ASMs When Using Cenobamate, p. 6 (Introduction), relevance 0.496
-  Excerpt: "commendations are based on the experience of the experts with the Spanish population and are not as prescriptive as those made by epileptologists in the US, 23 where higher ASM doses are usually used. Different ap - proaches to clinical practice management for cenobamate, especially in terms of dosage of concomitant medications, between the US and Europe may reflect both different population characteristics and different indications for cenobamate. Generally, the US experts recommended proactive…"
+  Excerpt: "commendations are based on the experience of the experts with the Spanish population and are not as prescriptive as those made by epileptologists in the US, 23 where higher ASM doses are usually used. Different ap - proaches to clinical practice management for cenobamate, especially in terms of dosage of concomitant medications, between the US and Europe may reflect both different population characteristics and different indications for cenobamate. Generally, the US experts recommended proactive…
+
+1056 | CARREÑO 1234. the effectiveness and tolerability of cenobamate, patients with DRE and a high drug load might benefit from reduc- ing these concomitant ASMs. This may also apply to pa- tients who are receiving first or second- generation ASMs that are generally used as second- line options. Existing literature provides some data on how multidrug ASM reg - imens, including cenobamate, can be managed; for exam- ple, in patients with highly active and drug- resistant focal epilepsy, the most…"
   Check: Excerpt found verbatim (first 120 chars) on p. 6 of REDUCE 1 ASM SPANISH CONSENSUS.pdf.
 - [VERIFIED] Spanish Consensus: Reduce 1 ASM — Management of Concomitant ASMs When Using Cenobamate, p. 3 (Introduction), relevance 0.472
   Excerpt: "| 1053 CARREÑO 1234. Evidence from clinical trials and real- world studies suggests that most adverse impacts on patients receiving cenobamate in combination with other ASMs can be ef- fectively managed by decreasing the dose of, or completely discontinuing, the concomitant ASMs. 19–22 Tapering of concomitant ASMs is an acknowledged method of re - ducing AEs in patients taking multiple ASMs including cenobamate. 17 Reducing the dose or discontinuing con- comitant ASMs has been shown to resolve A…"
@@ -385,43 +382,30 @@ Generated: 2026-11-05T21:28:22.678Z
 - [VERIFIED] Spanish Consensus: Reduce 1 ASM — Management of Concomitant ASMs When Using Cenobamate, p. 2 (Introduction), relevance 0.42
   Excerpt: "e of cenobamate or the concomitant ASM may need to be adjusted to ensure cor - rect exposure and unchanged efficacy. 7 Drug–drug inter - actions between cenobamate and other ASMs may also lead to AEs; for example, significant somnolence has been reported with concomitant administration of cenobamate and clobazam, 15 and an increase in other central nervous system AEs such as dizziness has been reported when cenobamate is combined with other ASMs that inhibit so - dium channels. 16–18 Plain Langu…"
   Check: Excerpt found verbatim (first 120 chars) on p. 2 of REDUCE 1 ASM SPANISH CONSENSUS.pdf.
-- [VERIFIED] Spanish Consensus: Reduce 1 ASM — Management of Concomitant ASMs When Using Cenobamate, p. 6 (Introduction), relevance 0.397
-  Excerpt: "1056 | CARREÑO 1234. the effectiveness and tolerability of cenobamate, patients with DRE and a high drug load might benefit from reduc- ing these concomitant ASMs. This may also apply to pa- tients who are receiving first or second- generation ASMs that are generally used as second- line options. Existing literature provides some data on how multidrug ASM reg - imens, including cenobamate, can be managed; for exam- ple, in patients with highly active and drug- resistant focal epilepsy, the most…"
-  Check: Excerpt found verbatim (first 120 chars) on p. 6 of REDUCE 1 ASM SPANISH CONSENSUS.pdf.
 - [VERIFIED] Launch Deck: Eventually Monotherapy — Conversion to Monotherapy or Dual Therapy, p. 10 (Introduction), relevance 0.391
   Excerpt: "G, Stern JM, et al. Dose adjustment of concomitant antiseizure medications during cenobamate treatment: expert opinion consensus rec- ommendations. Neurol Ther. 2022;11:1705–20. https:// doi. org/ 10. 1007/ s4012 0- 022- 00400 - 5 38. Carreño M, Gil- Nagel A, Serratosa JM, Toledo M, Rodriguez- Uranga JJ, Villanueva V. Spanish consensus on the manage - ment of concomitant antiseizure medications when using cenobamate in adults with drug- resistant focal seizures. Epilepsia Open. 2024;9:1051–8. ht…"
   Check: Excerpt found verbatim (first 120 chars) on p. 10 of LAUNCH DECK - EVENTUALLY MONOTHERAPY.pdf.
 
-**Notes:** Mode: llm (engine: gemini-gemini-3.5-flash, embedding provider: local-tfidf).
+**Notes:** Mode: llm (engine: llm-gemini-gemini-3.5-flash-lite, embedding provider: local-tfidf).
 
 ## Q10 — PASS (grounded)
 
 **Question:** What is the Freedon study and what did it show about different lines of therapy?
 
-**Mode:** `llm` (engine: `gemini-gemini-3.5-flash`, embedding provider: `local-tfidf`)
+**Mode:** `llm` (engine: `llm-gemini-gemini-3.5-flash-lite`, embedding provider: `local-tfidf`)
 
 **Answer:**
 
-> ### What is the Freedon Study?
-> The **Freedon study** is a real-world research study published by Vicente Villanueva et al. in *Epilepsia* (2026), titled *"Freedon study: Real-life outcomes of cenobamate in different lines of treatment"* [1]. It evaluates the real-life outcomes of cenobamate (CNB) across different lines of treatment in epilepsy [1].
+> The Freedon study is a real-life clinical investigation assessing the outcomes of cenobamate across different lines of treatment in patients with refractory focal-onset seizures [1], [3]. 
 > 
-> ---
+> ### Key Clinical Findings
+> * **Evaluation of Treatment Lines:** The study evaluated real-life outcomes and long-term data of cenobamate when used in earlier lines of treatment (such as after two failed prior antiseizure medications), addressing a previous gap in literature where cenobamate was primarily studied in highly refractory patients who had failed an average of 7–12 prior medications [3].
+> * **Comparative Efficacy & Retention:** While specific numerical seizure-freedom rates or granular subgroup breakdowns for the Freedon study itself are not detailed in the provided excerpts, related real-world evidence indicates that when cenobamate is utilized in early therapy lines, it demonstrates the highest retention rate, seizure freedom, and response rates compared to other antiseizure medications such as lacosamide, levetiracetam, valproate, and topiramate [4].
 > 
-> ### What Did it Show About Different Lines of Therapy?
+> ### Clinical Considerations
+> * **Usage Context:** Historically, cenobamate has often been considered by clinicians in later therapy lines for drug-resistant epilepsy (DRE) [4]. However, findings evaluating earlier utilization encourage clinicians to consider administration in early adjunctive therapy given robust seizure control and a non-alarming safety profile comparable to other antiseizure medications [6].
 > 
-> 1. **Prior Baseline vs. Earlier Lines:** 
->    * The rationale noted that previous studies with cenobamate in refractory drug-resistant epilepsy (DRE) reported seizure-freedom rates of up to 20% in patients who had tried an average of 7–12 prior antiseizure medications (ASMs) [3]. 
->    * However, outcomes with cenobamate in earlier lines of treatment (e.g., after two failed prior ASMs) had not been extensively reported, especially regarding long-term outcomes [3].
-> 
-> 2. **Limitation of Available Excerpts for the Freedon Study:**
->    * The specific numerical results, efficacy rates, and long-term outcomes generated by the Freedon study itself across the different treatment lines are **not provided in the available excerpts** [1, 2, 3].
-> 
-> ---
-> 
-> ### Related Evidence on Early Lines of Therapy (Winter et al.)
-> While the specific results of the Freedon study are not detailed in the excerpts, separate real-world evidence on early therapy lines for drug-resistant focal onset seizures shows:
-> * **Retention and Efficacy:** In early therapy lines, cenobamate demonstrated the highest 12-month retention rate, seizure freedom, and response rate (≥50%, ≥75%, and 100% seizure reduction) compared to lacosamide, levetiracetam, valproate, and topiramate [4, 5].
-> * **Drug Load & Safety:** Cenobamate showed a reduction of drug load after initiation and a safety profile comparable to other ASMs, encouraging its consideration in early adjunctive therapy [6].
+> *(Note: Detailed numerical breakdowns comparing lines of therapy specific to the Freedon study text are not documented in the provided excerpts beyond its overarching scope as a real-life evaluation of cenobamate across different treatment lines [1], [3]).*
 > 
 > This is for medical information support only and is not a substitute for professional medical judgment.
 
@@ -446,7 +430,7 @@ Generated: 2026-11-05T21:28:22.678Z
   Excerpt: "740 Y. Winter et al. studies using CNB [ 7 , 8 , 22 , 23 ], and are comparable to adverse side effects described with other ASMs [ 3 , 36 , 39 – 42 ]. Provided the thus far non-alarming safety pro- file and robust seizure control with CNB, clinicians can be encouraged to consider administration of this ASM in the early adjunctive therapy of drug-resistant focal-onset seizures. The reduction of drug load after the initiation of CNB therapy was similar to that calculated in the study by Abou- mata…"
   Check: Excerpt found verbatim (first 120 chars) on p. 8 of LAUNCH DECK - RWE COMPARATIVE vs OTHER ASMs.pdf.
 
-**Notes:** Mode: llm (engine: gemini-gemini-3.5-flash, embedding provider: local-tfidf).
+**Notes:** Mode: llm (engine: llm-gemini-gemini-3.5-flash-lite, embedding provider: local-tfidf).
 
 ## Q11 — PASS (unsupported)
 

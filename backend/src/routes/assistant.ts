@@ -144,6 +144,26 @@ assistantRouter.delete(
   }),
 );
 
+assistantRouter.patch(
+  '/conversations/:id',
+  asyncHandler(async (req, res) => {
+    const title = String(req.body.title || '').trim();
+    if (!title) throw new ApiError(400, 'VALIDATION_ERROR', 'Title cannot be empty');
+    const conversation = await prisma.conversation.findUnique({
+      where: { id: req.params.id },
+    });
+    if (!conversation) throw notFound('Conversation');
+    if (conversation.userId !== authed(req).user!.id) {
+      throw new ApiError(403, 'FORBIDDEN', 'You do not have access to this conversation.');
+    }
+    const updated = await prisma.conversation.update({
+      where: { id: conversation.id },
+      data: { title },
+    });
+    ok(res, { conversation: updated });
+  }),
+);
+
 assistantRouter.post(
   '/feedback',
   asyncHandler(async (req, res) => {

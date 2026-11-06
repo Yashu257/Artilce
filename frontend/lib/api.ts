@@ -130,6 +130,7 @@ export const api = {
     return c;
   },
   deleteConversation: (id: string) => request(`/assistant/conversations/${id}`, { method: "DELETE" }),
+  renameConversation: (id: string, title: string) => request(`/assistant/conversations/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify({ title }) }),
   sendFeedback: (messageId: string, helpful: boolean) => {
     if (!messageId) return Promise.resolve({ success: false, error: { code: "NO_MESSAGE_ID", message: "This answer has no saved message id yet — open the conversation again to leave feedback." } } as ApiResponse<unknown>);
     return request("/assistant/feedback", { method: "POST", body: JSON.stringify({ messageId, helpful }) });

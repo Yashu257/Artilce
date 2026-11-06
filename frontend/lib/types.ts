@@ -3,8 +3,9 @@ export interface Category { id?: string; name: string; slug: string; description
 export interface Article {
   id: string; title: string; slug: string; summary: string; category: string;
   content?: string; status?: string; pdfFileName?: string | null; pdfPages?: number | null;
+  documentId?: string | null; slideImages?: string[]; sections?: any[];
   thumbnailUrl?: string | null; publishedAt?: string | null; createdAt?: string; updatedAt?: string;
-  authors?: string; bookmarked?: boolean;
+  authors?: string; author?: string | null; readingTime?: string | null; bookmarked?: boolean;
 }
 export interface ArticleSection { heading: string; content: string; }
 export interface DocumentItem {

@@ -1,47 +1,62 @@
 "use client";
 import Link from "next/link";
-import { FileText } from "lucide-react";
+import { FileText, ChevronRight } from "lucide-react";
 import type { Citation } from "../lib/types";
 
-/** Relevance may arrive as 0–1 or 0–100; normalise to a whole percent. */
 export function relevancePercent(r?: number): number | null {
   if (r === undefined || r === null || Number.isNaN(r)) return null;
   return Math.round(r > 1 ? r : r * 100);
 }
 
-export default function CitationPanel({ citations, selected, onSelect }: {
+interface CitationPanelProps {
   citations: Citation[];
-  selected?: Citation | null;
-  onSelect?: (c: Citation) => void;
-}) {
+}
+
+export default function CitationPanel({ citations }: CitationPanelProps) {
+  if (!citations || citations.length === 0) return null;
+
+  // Deduplicate sources by documentId and page
+  const uniqueCitations = citations.reduce<Citation[]>((acc, current) => {
+    const exists = acc.some(
+      (c) => c.documentId === current.documentId && c.page === current.page
+    );
+    if (!exists) {
+      acc.push(current);
+    }
+    return acc;
+  }, []);
+
   return (
-    <div className="mt-3 border-t border-border pt-3">
-      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-heading">Sources — click to open the exact PDF page</p>
-      <ul className="space-y-2">
-        {citations.map((c, i) => {
-          const rel = relevancePercent(c.relevance);
-          const isSelected = selected?.documentId === c.documentId && selected?.page === c.page;
+    <div className="mt-4 pt-3.5 border-t border-slate-100">
+      <div className="flex items-center gap-1.5 mb-2.5">
+        <span className="text-xs font-bold text-slate-700 tracking-tight">Sources</span>
+        <span className="text-[11px] text-slate-400 font-normal">({uniqueCitations.length} verified clinical reference{uniqueCitations.length === 1 ? '' : 's'})</span>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {uniqueCitations.map((c, i) => {
+          const docName = c.documentName || "Clinical Document";
+          const pageNum = c.page || 1;
+          const href = `/documents/${c.documentId || ''}?page=${pageNum}`;
+
           return (
-            <li key={`${c.documentId}-${c.page}-${i}`} className={`rounded-md p-2 ${isSelected ? "bg-primary/10 ring-1 ring-primary" : "bg-background"}`}>
-              <div className="flex items-start justify-between gap-2">
-                {/* Deep link (mandatory): /documents/:id?page=N — PdfViewer honours ?page=. */}
-                <Link href={`/documents/${c.documentId}?page=${c.page}`} className="flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
-                  <FileText className="h-4 w-4 shrink-0" />
-                  <span>{c.documentName} — Page {c.page}{c.section ? ` · ${c.section}` : ""}</span>
-                </Link>
-                {rel !== null && <span className="shrink-0 rounded bg-secondary/10 px-1.5 py-0.5 text-xs font-medium text-secondary">Relevance {rel}%</span>}
-              </div>
-              {c.excerpt && <p className="mt-1 text-xs leading-relaxed text-body">{c.excerpt}</p>}
-              {onSelect && (
-                <button onClick={() => onSelect(c)} className="mt-1.5 text-xs font-medium text-primary hover:underline">
-                  {isSelected ? "Showing in source preview" : "Preview this source"}
-                </button>
-              )}
-            </li>
+            <Link
+              key={`${c.documentId}-${pageNum}-${i}`}
+              href={href}
+              className="group inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-teal-50/80 border border-slate-200/90 hover:border-teal-600/60 transition-all text-xs text-slate-700 hover:text-teal-900 shadow-2xs"
+              title={`Open ${docName} at Page ${pageNum} in the in-app viewer`}
+            >
+              <FileText className="w-3.5 h-3.5 text-teal-700 shrink-0 group-hover:scale-105 transition-transform" />
+              <span className="font-semibold text-slate-800 group-hover:text-teal-900 truncate max-w-[260px] sm:max-w-[340px]">
+                {docName}
+              </span>
+              <span className="shrink-0 font-medium text-teal-800 bg-teal-100/60 px-1.5 py-0.5 rounded-md text-[10px]">
+                Page {pageNum}
+              </span>
+              <ChevronRight className="w-3 h-3 text-slate-400 group-hover:text-teal-700 transition-colors shrink-0" />
+            </Link>
           );
         })}
-      </ul>
-      <p className="mt-2 text-xs text-body">This information is for healthcare professionals only and does not replace clinical judgement. Verify against the full source document before acting.</p>
+      </div>
     </div>
   );
 }

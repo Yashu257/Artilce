@@ -6,11 +6,10 @@ import { BookOpen, Bot, FileText, LayoutDashboard, PanelLeftClose, PanelLeftOpen
 import type { User } from "../lib/types";
 
 const NAV = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/articles", label: "Articles", icon: BookOpen },
-  { href: "/documents", label: "Documents", icon: FileText },
-  { href: "/ai-assistant", label: "AI Assistant", icon: Bot },
-  { href: "/bookmarks", label: "Bookmarks", icon: Bookmark },
+  { href: "/dashboard", label: "Clinical Dashboard", icon: LayoutDashboard, badge: null },
+  { href: "/articles", label: "Clinical Publications", icon: BookOpen, badge: "9" },
+  { href: "/ai-assistant", label: "Clinical AI Assistant", icon: Bot, badge: "Online" },
+  { href: "/bookmarks", label: "Saved Bookmarks", icon: Bookmark, badge: null },
 ];
 
 export default function Sidebar({ collapsed, onToggle, user }: { collapsed: boolean; onToggle: () => void; user: User | null }) {
@@ -29,7 +28,14 @@ export default function Sidebar({ collapsed, onToggle, user }: { collapsed: bool
             <Link key={item.href} href={item.href} title={item.label}
               className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm ${active ? "bg-primary text-white" : "text-body hover:bg-background hover:text-heading"}`}>
               <Icon className="h-5 w-5 shrink-0" />
-              {!collapsed && <span>{item.label}</span>}
+              {!collapsed && <span className="truncate">{item.label}</span>}
+              {!collapsed && item.badge && (
+                <span className={`ml-auto rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                  item.badge === "Online" ? "bg-emerald-100/80 text-emerald-800" : active ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
+                }`}>
+                  {item.badge}
+                </span>
+              )}
             </Link>
           );
         })}

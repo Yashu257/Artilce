@@ -37,7 +37,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       )}
       <div className={`transition-all ${collapsed ? "lg:pl-16" : "lg:pl-64"}`}>
         <TopNav onMenuClick={() => setMobileOpen(true)} />
-        <main className="mx-auto max-w-7xl p-4 sm:p-6">{children}</main>
+        <main className={pathname === "/ai-assistant" ? "h-[calc(100vh-4rem)] overflow-hidden flex flex-col" : "mx-auto max-w-7xl p-4 sm:p-6"}>
+          {children}
+        </main>
       </div>
     </div>
   );
