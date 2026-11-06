@@ -212,16 +212,105 @@ export const handleChat: AssistantHandler = async (req: ChatRequest): Promise<Ch
   return answerQuestion(req.userId, req.conversationId, req.question);
 };
 
+async function generateWithLlmStream(
+  question: string,
+  chunks: RetrievedChunk[],
+  onToken: (token: string) => void,
+): Promise<{ text: string; mode: string } | null> {
+  const userPrompt = buildGroundedPrompt(question, chunks);
+
+  if (process.env.GEMINI_API_KEY) {
+    try {
+      const { GoogleGenerativeAI } = await import('@google/generative-ai');
+      const client = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string);
+      for (const m of GEMINI_MODELS) {
+        try {
+          const model = client.getGenerativeModel({
+            model: m,
+            systemInstruction: SYSTEM_PROMPT,
+          });
+          const responseStream = await model.generateContentStream({
+            contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+          });
+          let fullText = '';
+          for await (const chunk of responseStream.stream) {
+            const chunkText = chunk.text();
+            if (chunkText) {
+              fullText += chunkText;
+              onToken(chunkText);
+            }
+          }
+          if (fullText.trim()) {
+            return { text: fullText.trim(), mode: `llm-gemini-${m}` };
+          }
+        } catch (mErr) {
+          logger.warn(`[assistant] Gemini stream on ${m} failed, trying next`, { error: String(mErr) });
+        }
+      }
+    } catch (err) {
+      logger.warn('[assistant] Gemini initialization failed', { error: String(err) });
+    }
+  }
+
+  // Fallback to non-streaming generateWithLlm
+  const nonStream = await generateWithLlm(question, chunks);
+  if (nonStream && nonStream.text) {
+    const words = nonStream.text.split(' ');
+    for (const w of words) {
+      onToken(w + ' ');
+      await new Promise((r) => setTimeout(r, 20));
+    }
+    return nonStream;
+  }
+
+  return null;
+}
+
 export async function answerQuestionStream(
   userId: string,
   conversationId: string | undefined,
   question: string,
   onToken: (token: string) => void,
 ): Promise<AssistantAnswer> {
-  const result = await answerQuestion(userId, conversationId, question);
-  const text = result.answer;
-  for (let i = 0; i < text.length; i += 80) {
-    onToken(text.slice(i, i + 80));
+  const cleanQuestion = question.trim();
+  if (!cleanQuestion) throw new Error('Question must not be empty.');
+
+  const { chunks, provider } = await retrieve(cleanQuestion, 6);
+
+  if (chunks.length === 0) {
+    const answer = withDisclaimer(INSUFFICIENT_INFORMATION);
+    for (const word of answer.split(' ')) {
+      onToken(word + ' ');
+      await new Promise((r) => setTimeout(r, 25));
+    }
+    const convId = await persistConversation(userId, conversationId, cleanQuestion, answer, []);
+    return { answer, citations: [], conversationId: convId, mode: 'local-retrieval', engine: 'insufficient', provider };
   }
-  return result;
+
+  const dedupedChunks = deduplicateChunks(chunks);
+
+  const streamed = await generateWithLlmStream(cleanQuestion, dedupedChunks, onToken);
+  let answer: string;
+  let mode: AssistantMode;
+  let engine: string;
+
+  if (streamed && streamed.text) {
+    answer = withDisclaimer(streamed.text);
+    mode = 'llm';
+    engine = streamed.mode;
+    onToken('\n\n' + MEDICAL_DISCLAIMER);
+  } else {
+    const rawAnswer = extractiveAnswer(cleanQuestion, dedupedChunks);
+    answer = withDisclaimer(rawAnswer);
+    mode = 'local-retrieval';
+    engine = 'extractive';
+    const words = answer.split(' ');
+    for (const word of words) {
+      onToken(word + ' ');
+      await new Promise((r) => setTimeout(r, 20));
+    }
+  }
+
+  const convId = await persistConversation(userId, conversationId, cleanQuestion, answer, dedupedChunks);
+  return { answer, citations: dedupedChunks, conversationId: convId, mode, engine, provider };
 }

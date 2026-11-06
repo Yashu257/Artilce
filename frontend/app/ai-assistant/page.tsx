@@ -283,48 +283,78 @@ export default function AiAssistantPage() {
     abortRef.current = ctrl;
     let convId: string | null = activeId;
 
+    // Smooth ChatGPT-style typewriter queue
+    let queue: string[] = [];
+    let displayedText = "";
+    let isStreamDone = false;
+    let typingTimer: NodeJS.Timeout | null = null;
+
+    const drainPromise = new Promise<void>((resolve) => {
+      typingTimer = setInterval(() => {
+        if (queue.length > 0) {
+          // Adaptive typing pace: if backlog is large, type more characters; otherwise 2-4 chars per frame
+          const takeCount = queue.length > 80 ? 6 : queue.length > 30 ? 4 : queue.length > 10 ? 2 : 1;
+          const chunk = queue.splice(0, takeCount).join("");
+          displayedText += chunk;
+          setMessages((m) => {
+            const copy = [...m];
+            const last = copy[copy.length - 1];
+            if (last && last.role === "assistant") {
+              copy[copy.length - 1] = { ...last, content: displayedText };
+            }
+            return copy;
+          });
+        } else if (isStreamDone) {
+          if (typingTimer) clearInterval(typingTimer);
+          resolve();
+        }
+      }, 16); // ~60fps typewriter tick
+    });
+
     try {
       const result = await streamChat(
         q,
         activeId,
         (token) => {
-          setMessages((m) => {
-            const copy = [...m];
-            const last = copy[copy.length - 1];
-            if (last && last.role === "assistant") {
-              copy[copy.length - 1] = { ...last, content: last.content + token };
-            }
-            return copy;
-          });
+          // Push incoming characters into typewriter queue
+          for (const char of token) {
+            queue.push(char);
+          }
         },
         ctrl.signal
       );
 
+      // Signal stream done and wait for typewriter to finish typing all remaining text
+      isStreamDone = true;
+      await drainPromise;
+
       convId = result.conversationId ?? convId;
       if (convId) {
         setActiveId(convId);
-        try {
-          const saved = await api.getConversation(convId);
-          if (saved.messages?.length) setMessages(saved.messages);
-        } catch {
-          setMessages((m) => {
-            const copy = [...m];
-            const last = copy[copy.length - 1];
-            if (last?.role === "assistant") {
-              copy[copy.length - 1] = {
-                role: "assistant",
-                content: result.answer || last.content,
-                citations: result.citations,
-                mode: result.mode,
-                id: result.messageId,
-              };
-            }
-            return copy;
-          });
-        }
-        loadConversations();
       }
+
+      // Finalize assistant message with citations and metadata
+      setMessages((m) => {
+        const copy = [...m];
+        const last = copy[copy.length - 1];
+        if (last?.role === "assistant") {
+          copy[copy.length - 1] = {
+            role: "assistant",
+            content: result.answer || displayedText || last.content,
+            citations: result.citations,
+            mode: result.mode,
+            id: result.messageId,
+          };
+        }
+        return copy;
+      });
+
+      loadConversations();
     } catch (e) {
+      isStreamDone = true;
+      if (typingTimer) clearInterval(typingTimer);
+      queue = [];
+
       if ((e as Error).name === "AbortError") {
         setMessages((m) => {
           const last = m[m.length - 1];
@@ -343,6 +373,7 @@ export default function AiAssistantPage() {
         setMessages((m) => m.slice(0, appendUser ? -2 : -1));
       }
     } finally {
+      if (typingTimer) clearInterval(typingTimer);
       setStreaming(false);
       abortRef.current = null;
     }
