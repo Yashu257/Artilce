@@ -215,6 +215,8 @@ documentsRouter.get(
     res.setHeader('Content-Type', doc.mimeType || 'application/pdf');
     res.setHeader('Accept-Ranges', 'bytes');
     res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(doc.fileName)}"`);
+    res.removeHeader('X-Frame-Options');
+    res.setHeader('Access-Control-Allow-Origin', '*');
 
     if (range) {
       const match = /bytes=(\d*)-(\d*)/.exec(range);

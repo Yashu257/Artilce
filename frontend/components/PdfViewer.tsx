@@ -17,6 +17,7 @@ import { api } from "../lib/api";
 interface PdfViewerProps {
   documentId: string;
   title: string;
+  fileName?: string | null;
   pageCount?: number | null;
   initialPage?: number;
 }
@@ -24,6 +25,7 @@ interface PdfViewerProps {
 export default function PdfViewer({
   documentId,
   title,
+  fileName,
   pageCount,
   initialPage = 1,
 }: PdfViewerProps) {
@@ -61,15 +63,19 @@ export default function PdfViewer({
     }
   };
 
+  // Direct static path from assets or authenticated stream
+  const staticPdfUrl = fileName ? `/PDF/${encodeURIComponent(fileName)}` : null;
+  const pdfBase = staticPdfUrl || api.documentFileUrl(documentId);
+
   const download = async () => {
     try {
-      const res = await fetch(api.documentFileUrl(documentId), { credentials: "include" });
+      const res = await fetch(pdfBase, { credentials: "include" });
       if (!res.ok) return;
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `${title.replace(/[^a-zA-Z0-9_-]/g, "_")}.pdf`;
+      a.download = fileName || `${title.replace(/[^a-zA-Z0-9_-]/g, "_")}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
     } catch {
@@ -77,7 +83,7 @@ export default function PdfViewer({
     }
   };
 
-  const src = `${api.documentFileUrl(documentId)}#page=${page}&zoom=${zoom}`;
+  const src = `${pdfBase}#page=${page}&zoom=${zoom}`;
 
   return (
     <div

@@ -107,6 +107,7 @@ function DocumentDetailContent() {
       <PdfViewer
         documentId={doc.id}
         title={doc.title}
+        fileName={doc.fileName}
         pageCount={doc.pageCount}
         initialPage={initialPage}
       />

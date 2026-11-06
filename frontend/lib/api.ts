@@ -106,7 +106,12 @@ export const api = {
     const data = unwrap(r);
     return data?.document ?? data;
   },
-  documentFileUrl: (id: string) => `${API_BASE}/documents/${encodeURIComponent(id)}/file`,
+  documentFileUrl: (id: string) => {
+    if (typeof window !== "undefined") {
+      return `/api/v1/documents/${encodeURIComponent(id)}/file`;
+    }
+    return `${API_BASE}/documents/${encodeURIComponent(id)}/file`;
+  },
   uploadDocument: async (form: FormData): Promise<DocumentItem> => {
     const res = await fetch(`${API_BASE}/documents`, { method: "POST", credentials: "include", body: form });
     const json = (await res.json().catch(() => null)) as ApiResponse<DocumentItem> | null;

@@ -20,7 +20,13 @@ import { fail } from './utils/response';
 export function createApp(): Express {
   const app = express();
 
-  app.use(helmet());
+  app.use(
+    helmet({
+      frameguard: false, // Allow iframe embedding for PDF viewer
+      crossOriginResourcePolicy: false,
+      contentSecurityPolicy: false,
+    }),
+  );
   app.use(
     cors({
       origin: env.frontendOrigin,
