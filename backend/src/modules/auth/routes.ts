@@ -17,15 +17,34 @@ import crypto from 'crypto';
 import { Router } from 'express';
 import { assertJwtSecret, env } from '../../config/env';
 import { auditLog } from '../../lib/audit';
+import { sendOtpEmail } from '../../lib/email';
 import { logger } from '../../lib/logger';
 import { prisma } from '../../lib/prisma';
 import { clearSessionCookie, requireAuth, setSessionCookie, signSessionToken } from '../../middleware/auth';
 import { asyncHandler } from '../../middleware/errorHandler';
 import { loginLimiter } from '../../middleware/rateLimit';
 import { ApiError, ok, unauthorized } from '../../utils/response';
-import { forgotPasswordSchema, loginSchema, parseBody, resetPasswordSchema } from '../../utils/validation';
+import {
+  forgotPasswordSchema,
+  loginSchema,
+  parseBody,
+  registerOtpRequestSchema,
+  registerOtpVerifySchema,
+  resendOtpSchema,
+  resetPasswordSchema,
+} from '../../utils/validation';
 
 export const authRouter = Router();
+
+interface PendingRegistration {
+  name: string;
+  email: string;
+  passwordHash: string;
+  otp: string;
+  expiresAt: number;
+  attempts: number;
+}
+const pendingRegistrations = new Map<string, PendingRegistration>();
 
 const MAX_FAILED = 5;
 const LOCKOUT_MS = 15 * 60 * 1000;
@@ -97,6 +116,160 @@ authRouter.post(
     await auditLog(user.id, 'auth.login', { email: user.email }, req.ip);
     logger.info('Login', { userId: user.id, email: user.email });
     ok(res, { user: publicUser(user) });
+  }),
+);
+
+/**
+ * Step 1: Request Registration OTP.
+ * Validates details, verifies email is not already taken, hashes password,
+ * generates 6-digit OTP, and sends it to the user's email.
+ */
+authRouter.post(
+  '/register/request-otp',
+  asyncHandler(async (req, res) => {
+    const { name, email, password } = parseBody(registerOtpRequestSchema, req.body);
+    const normalizedEmail = email.trim().toLowerCase();
+
+    const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+    if (existing) {
+      throw new ApiError(
+        409,
+        'EMAIL_EXISTS',
+        'An account with this email address already exists. Please sign in instead.',
+      );
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    pendingRegistrations.set(normalizedEmail, {
+      name: name.trim(),
+      email: normalizedEmail,
+      passwordHash,
+      otp,
+      expiresAt: Date.now() + 10 * 60 * 1000, // 10 minutes
+      attempts: 0,
+    });
+
+    const result = await sendOtpEmail({
+      to: normalizedEmail,
+      otp,
+      name: name.trim(),
+      type: 'register',
+    });
+
+    await auditLog(null, 'auth.register.otp_sent', { email: normalizedEmail }, req.ip);
+
+    ok(res, {
+      message: 'A 6-digit verification code has been sent to your email.',
+      email: normalizedEmail,
+      devOtp: result.devOtp,
+    });
+  }),
+);
+
+/**
+ * Step 2: Verify Registration OTP and complete account creation.
+ * Verifies code, creates Doctor account, and establishes authenticated session.
+ */
+authRouter.post(
+  '/register/verify-otp',
+  asyncHandler(async (req, res) => {
+    const { email, otp } = parseBody(registerOtpVerifySchema, req.body);
+    const normalizedEmail = email.trim().toLowerCase();
+    const entry = pendingRegistrations.get(normalizedEmail);
+
+    if (!entry || Date.now() > entry.expiresAt) {
+      pendingRegistrations.delete(normalizedEmail);
+      throw new ApiError(
+        400,
+        'OTP_EXPIRED',
+        'Verification code has expired or is invalid. Please request a new code.',
+      );
+    }
+
+    if (entry.attempts >= 5) {
+      pendingRegistrations.delete(normalizedEmail);
+      throw new ApiError(
+        429,
+        'TOO_MANY_ATTEMPTS',
+        'Too many invalid attempts. Please request a new verification code.',
+      );
+    }
+
+    if (entry.otp !== otp.trim()) {
+      entry.attempts += 1;
+      throw new ApiError(
+        400,
+        'INVALID_OTP',
+        'Invalid verification code. Please check your email and try again.',
+      );
+    }
+
+    // OTP Verified! Create user
+    assertJwtSecret();
+    const user = await prisma.user.create({
+      data: {
+        name: entry.name,
+        email: entry.email,
+        passwordHash: entry.passwordHash,
+        role: 'doctor',
+        isActive: true,
+      },
+    });
+
+    pendingRegistrations.delete(normalizedEmail);
+
+    const token = signSessionToken({ id: user.id, email: user.email, name: user.name, role: user.role });
+    setSessionCookie(res, token);
+
+    await auditLog(user.id, 'auth.register.completed', { email: user.email }, req.ip);
+    logger.info('User registered and verified successfully', { userId: user.id, email: user.email });
+
+    ok(res, {
+      user: publicUser(user),
+      message: 'Account successfully verified and created! Welcome to Cipla MedKnowledge.',
+    });
+  }),
+);
+
+/**
+ * Resend OTP code for pending registration.
+ */
+authRouter.post(
+  '/register/resend-otp',
+  asyncHandler(async (req, res) => {
+    const { email } = parseBody(resendOtpSchema, req.body);
+    const normalizedEmail = email.trim().toLowerCase();
+    const entry = pendingRegistrations.get(normalizedEmail);
+
+    if (!entry) {
+      throw new ApiError(
+        400,
+        'NO_PENDING_REGISTRATION',
+        'No pending registration found for this email. Please submit the registration form again.',
+      );
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    entry.otp = otp;
+    entry.expiresAt = Date.now() + 10 * 60 * 1000;
+    entry.attempts = 0;
+
+    const result = await sendOtpEmail({
+      to: normalizedEmail,
+      otp,
+      name: entry.name,
+      type: 'register',
+    });
+
+    await auditLog(null, 'auth.register.otp_resent', { email: normalizedEmail }, req.ip);
+
+    ok(res, {
+      message: 'A new 6-digit verification code has been sent.',
+      email: normalizedEmail,
+      devOtp: result.devOtp,
+    });
   }),
 );
 

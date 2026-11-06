@@ -53,6 +53,21 @@ export const api = {
   // Auth
   login: (email: string, password: string) =>
     request<User>("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }),
+  requestRegisterOtp: (data: { name: string; email: string; password: string }) =>
+    request<{ message: string; email: string; devOtp?: string }>("/auth/register/request-otp", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  verifyRegisterOtp: (data: { email: string; otp: string }) =>
+    request<User>("/auth/register/verify-otp", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  resendRegisterOtp: (email: string) =>
+    request<{ message: string; email: string; devOtp?: string }>("/auth/register/resend-otp", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    }),
   logout: () => request("/auth/logout", { method: "POST" }),
   me: () => request<User>("/auth/me"),
   forgotPassword: (email: string) =>

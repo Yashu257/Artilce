@@ -6,6 +6,21 @@ export const loginSchema = z.object({
   password: z.string().min(1, 'Password is required.'),
 });
 
+export const registerOtpRequestSchema = z.object({
+  name: z.string().trim().min(2, 'Full name must be at least 2 characters.').max(80),
+  email: z.string().trim().email('A valid email address is required.'),
+  password: z.string().min(8, 'Password must be at least 8 characters.').max(128),
+});
+
+export const registerOtpVerifySchema = z.object({
+  email: z.string().trim().email('A valid email address is required.'),
+  otp: z.string().trim().regex(/^\d{6}$/, 'Verification code must be 6 digits.'),
+});
+
+export const resendOtpSchema = z.object({
+  email: z.string().trim().email('A valid email address is required.'),
+});
+
 export const forgotPasswordSchema = z.object({
   email: z.string().email('A valid email address is required.'),
 });
